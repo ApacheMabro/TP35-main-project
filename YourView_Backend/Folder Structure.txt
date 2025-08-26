@@ -1,0 +1,34 @@
+Main/
+├── UHI_Database/                # Everything related to Urban Heat Island mapping
+│   ├── Data/
+│   │   ├── Raw_Data/            # Original datasets (LST, NDVI, population, etc.)
+│   │   ├── Processed_Data/      # Cleaned & transformed datasets for Supabase
+│   │   ├── External/            # Any references, boundary files, metadata
+│   │   └── README.md
+│   │
+│   ├── Scripts/
+│   │   ├── preprocessing/       # Scripts to clean & transform raw datasets
+│   │   ├── analysis/            # UHI hotspot detection, NDVI integration
+│   │   ├── visualisation/       # Geospatial heatmaps, dashboards
+│   │   └── README.md
+│   │
+│   ├── Notebooks/               # Jupyter notebooks for experiments
+│   ├── Supabase/                # SQL schema + ETL scripts for UHI database
+│   │   ├── create_schema.sql
+│   │   ├── populate_tables.py
+│   │   ├── queries.sql
+│   │   └── README.md
+│   │
+│   ├── Docs/                    # Technical documentation, metadata dictionaries
+│   └── README.md
+│
+├── Tree_Classification/         # For the ML model that classifies "tree vs no tree"
+│   ├── Data/
+│   │   ├── Training_Data/
+│   │   ├── Validation_Data/
+│   │   └── Models/
+│   ├── Scripts/
+│   ├── Notebooks/
+│   └── README.md
+│
+└── docs/                        # High-level project documentation and diagrams
