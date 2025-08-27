@@ -1,15 +1,22 @@
 <template>
   <div id="app" class="app">
     <header class="topbar">
-      <div class="brand">TP35 • Main Project</div>
+      <div class="brand">
+  <RouterLink to="/">
+    <img :src="logo" alt="Logo" class="logo cursor-pointer" />
+  </RouterLink>
+</div>
+
+
       <nav class="nav">
-        <RouterLink to="/" class="link" active-class="active">Home</RouterLink>
-        <RouterLink to="/greenpage" class="link" active-class="active">Green Index</RouterLink>
-        <RouterLink to="/heat" class="link" active-class="active">Urban Heat Map</RouterLink>
         <RouterLink to="/about" class="link" active-class="active">About Us</RouterLink>
+        <RouterLink to="/score" class="link" active-class="active">Your Window</RouterLink>
+        <RouterLink to="/heat" class="link" active-class="active">Your Area</RouterLink>
+        <RouterLink to="/temp" class="link" active-class="active">Your Voice</RouterLink>
+        <RouterLink to="/greenpage" class="link" active-class="active">Green Index</RouterLink>
         <RouterLink to="/source" class="link" active-class="active">Source</RouterLink>
-        <RouterLink to="/temp" class="link" active-class="active">Temp</RouterLink>
-        <RouterLink to="/score" class="link" active-class="active">3-30-300 Score</RouterLink>
+
+
       </nav>
     </header>
 
@@ -22,7 +29,7 @@
 </template>
 
 <script setup>
-// nothing here
+import logo from '@/assets/logo.png'
 </script>
 
 <style scoped>
@@ -70,5 +77,9 @@
   padding: 12px 16px;
   color: var(--fg-dim);
   background: #f5f7f5;
+}
+.logo {
+  height: 40px;   /* Change size */
+  width: auto;
 }
 </style>
