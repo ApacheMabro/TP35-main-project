@@ -1,0 +1,24 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import HomePage from '../pages/HomePage.vue'
+import GreenIndex from '../pages/GreenIndex.vue'
+import HeatMap from '../pages/HeatMap.vue'
+import AboutPage from '../pages/AboutPage.vue'
+import SourcePage from '../pages/SourcePage.vue'
+import TempPage from '../pages/TempPage.vue'
+import ScorePage from '../pages/ScorePage.vue'
+const routes = [
+  { path: '/', name: 'home', component: HomePage },
+  { path: '/greenpage', name: 'green', component: GreenIndex },
+  { path: '/heat', name: 'heat', component: HeatMap },
+  { path: '/about', name: 'about', component: AboutPage },
+  { path: '/source', name: 'source', component: SourcePage },
+  { path: '/temp', name: 'temp', component: TempPage },
+  { path: '/score', name: 'score', component: ScorePage },
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+})
+
+export default router
