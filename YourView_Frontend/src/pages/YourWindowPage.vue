@@ -50,7 +50,7 @@
 </template>
 
 <script setup>
-// 空
+//
 </script>
 
 <style scoped>
@@ -144,7 +144,7 @@
   font-size: 1.1rem;
   padding: 0.8rem 2rem;
   border: none;
-  border-radius: 8px; /* 钝边 */
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.3s;
 }

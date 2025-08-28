@@ -11,7 +11,7 @@
       <nav class="nav">
         <RouterLink to="/about" class="link" active-class="active">About Us</RouterLink>
         <RouterLink to="/YourWindow" class="link" active-class="active">Your Window</RouterLink>
-        <RouterLink to="/heat" class="link" active-class="active">Your Area</RouterLink>
+        <RouterLink to="/YourArea" class="link" active-class="active">Your Area</RouterLink>
         <RouterLink to="/temp" class="link" active-class="active">Your Voice</RouterLink>
         <RouterLink to="/greenpage" class="link" active-class="active">Green Index</RouterLink>
         <RouterLink to="/source" class="link" active-class="active">Source</RouterLink>

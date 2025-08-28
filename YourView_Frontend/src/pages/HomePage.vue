@@ -25,7 +25,7 @@
       </div>
     </div>
 
-    <!-- 👇 Content starts here -->
+    <!--  Content starts here -->
     <section class="content">
       <!-- Why It Matters -->
       <div class="why-section">
@@ -72,7 +72,7 @@
           :key="index"
           class="faq-item"
         >
-          <!-- 问题部分 -->
+          <!-- Question Section -->
           <div class="faq-question" @click="toggle(index)">
             <strong>{{ item.question }}</strong>
             <span
@@ -81,7 +81,7 @@
             >▼</span>
           </div>
 
-          <!-- 答案部分 -->
+          <!-- Answer section -->
           <transition name="faq">
             <div v-show="openIndex === index" class="faq-answer">
               {{ item.answer }}
@@ -288,7 +288,7 @@ const toggle = (index) => {
   color: #555;
 }
 
-/* 下拉动画 */
+/* Pull the drawing down */
 .faq-enter-active, .faq-leave-active {
   transition: all 0.3s ease;
 }
