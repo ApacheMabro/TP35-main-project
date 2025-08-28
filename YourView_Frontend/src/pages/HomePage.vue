@@ -257,7 +257,6 @@ const toggle = (index) => {
 
 .stories {
   padding: 40px 80px;
-  background: #f9f9f9;
 }
 .faq {
   max-width: 600px;
