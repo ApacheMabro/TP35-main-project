@@ -67,13 +67,29 @@
       <!-- FAQ -->
       <div class="faq">
         <h2>FAQ</h2>
-        <ul>
-          <li><strong>Do I have to live in Melbourne?</strong><br />No, anyone can use our website.</li>
-          <li><strong>Why upload my window photo?</strong><br />So we can measure tree visibility.</li>
-          <li><strong>Where can I find the map?</strong><br />On the homepage navigation bar.</li>
-          <li><strong>Do you have a mobile app?</strong><br />We are planning it soon.</li>
-        </ul>
+        <div
+          v-for="(item, index) in faqItems"
+          :key="index"
+          class="faq-item"
+        >
+          <!-- 问题部分 -->
+          <div class="faq-question" @click="toggle(index)">
+            <strong>{{ item.question }}</strong>
+            <span
+              class="arrow"
+              :class="{ open: openIndex === index }"
+            >▼</span>
+          </div>
+
+          <!-- 答案部分 -->
+          <transition name="faq">
+            <div v-show="openIndex === index" class="faq-answer">
+              {{ item.answer }}
+            </div>
+          </transition>
+        </div>
       </div>
+
     </section>
   </div>
 </template>
@@ -107,6 +123,33 @@ onUnmounted(() => {
 const goToSlide = (index) => {
   currentIndex.value = index
 }
+
+
+const openIndex = ref(null)
+
+const faqItems = [
+  {
+    question: "Do I have to live in Melbourne?",
+    answer: "No, anyone can use our website."
+  },
+  {
+    question: "Why upload my window photo?",
+    answer: "So we can measure tree visibility."
+  },
+  {
+    question: "Where can I find the map?",
+    answer: "On the homepage navigation bar."
+  },
+  {
+    question: "Do you have a mobile app?",
+    answer: "We are planning it soon."
+  }
+]
+
+const toggle = (index) => {
+  openIndex.value = openIndex.value === index ? null : index
+}
+
 </script>
 
 <style scoped>
@@ -161,7 +204,7 @@ const goToSlide = (index) => {
 /* --- Content --- */
 .content {
   padding: 60px 20px;
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -195,7 +238,7 @@ const goToSlide = (index) => {
   background: #fff;
   padding: 20px;
   border-radius: 12px;
-  width: 250px;
+  width: 450px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
@@ -211,5 +254,76 @@ const goToSlide = (index) => {
 .faq li {
   margin-bottom: 15px;
 }
+
+.stories {
+  padding: 40px 80px;
+  background: #f9f9f9;
+}
+.faq {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  border-bottom: 1px solid #ddd;
+  padding: 10px 0;
+}
+
+.faq-question {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.arrow {
+  transition: transform 0.3s ease;
+}
+
+.arrow.open {
+  transform: rotate(180deg);
+}
+
+.faq-answer {
+  padding: 10px 0;
+  color: #555;
+}
+
+/* 下拉动画 */
+.faq-enter-active, .faq-leave-active {
+  transition: all 0.3s ease;
+}
+.faq-enter-from, .faq-leave-to {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+.faq-enter-to, .faq-leave-from {
+  max-height: 200px;
+  opacity: 1;
+}
+
+
+.card {
+  flex: 1;
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  text-align: center;
+  transition: transform 0.3s ease;
+}
+
+.card img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
 </style>
 
