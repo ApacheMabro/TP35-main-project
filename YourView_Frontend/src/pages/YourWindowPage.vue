@@ -127,7 +127,7 @@
               <template v-else>
                 <img :src="previewUrl" alt="Preview" class="dz-preview" />
               </template>
-              <input ref="fileInput" type="file" accept="image/*" class="hidden-input" @change="handleFile" />
+              <input ref="fileInput" type="file" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.jfif,.heic,.heif,.tif,.tiff" class="hidden-input" @change="handleFile" />
             </div>
 
             <div class="dz-actions">
@@ -265,10 +265,15 @@ function handleDrop(e) {
   if (f) loadFile(f);
 }
 function loadFile(f) {
-  if (!f.type.startsWith("image/")) return;
+  const name = (f.name || "").toLowerCase();
+  const mime = (f.type || "").toLowerCase();
+  const byMime = mime.startsWith("image/");
+  const byExt = /\.(png|jpe?g|jfif|gif|webp|bmp|heic|heif|tiff?)$/i.test(name);
+  if (!byMime && !byExt) return;
   file.value = f;
   previewUrl.value = URL.createObjectURL(f);
 }
+
 
 function validateTrees(mode) {
   const v = String(form.trees).trim();
