@@ -1,10 +1,12 @@
 version: 1
 applications:
-  - appRoot: YourView_Frontend   
+  - appRoot: YourView_Frontend
     frontend:
       phases:
         preBuild:
           commands:
+            - nvm install 20
+            - nvm use 20
             - npm ci
         build:
           commands:
@@ -16,6 +18,7 @@ applications:
       cache:
         paths:
           - node_modules/**/*
+
     rewrites:
       - source: </^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|svg|txt|webp)$)([^.]+$)/>
         target: /index.html
