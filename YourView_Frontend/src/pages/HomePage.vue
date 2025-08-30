@@ -28,7 +28,7 @@
     <!--  Content starts here -->
     <section class="content">
       <!-- Why It Matters -->
-      <div class="why-section">
+      <div class="why-section reveal">
         <h2>Why It Matters To You</h2>
         <div class="why-container">
           <img :src="images[3]" alt="Why It Matters" />
@@ -43,7 +43,7 @@
       </div>
 
       <!-- Our Stories -->
-      <div class="stories">
+      <div class="stories reveal">
         <h2>Our Stories</h2>
         <div class="story-cards">
           <div class="card">
@@ -65,7 +65,7 @@
       </div>
 
       <!-- FAQ -->
-      <div class="faq">
+      <div class="faq reveal">
         <h2>FAQ</h2>
         <div
           v-for="(item, index) in faqItems"
@@ -111,10 +111,35 @@ const currentIndex = ref(0)
 let intervalId = null
 
 onMounted(() => {
+  // Carousel
   intervalId = setInterval(() => {
     currentIndex.value = (currentIndex.value + 1) % backgroundimages.length
   }, 5000)
+
+  // Cyclically triggered IntersectionObserver
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          // Enter the viewport: Add show -> Fade in
+          entry.target.classList.add('show')
+        } else {
+          // To leave the viewport: Remove show -> Reset to fade state
+          entry.target.classList.remove('show')
+        }
+      })
+    },
+    {
+      // threshold: 0.15,         // It is triggered only when more than 15% is visible
+      rootMargin: '0px 0px -5% 0px', // It can be triggered slightly earlier or disappear later, and can be adjusted as needed
+    }
+  )
+
+  document.querySelectorAll('.reveal').forEach((el) => observer.observe(el))
 })
+
+
+
 
 onUnmounted(() => {
   clearInterval(intervalId)
@@ -323,6 +348,24 @@ const toggle = (index) => {
 .card:hover {
   transform: translateY(-5px);
 }
+
+/* --- Reveal animation --- */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+  will-change: opacity, transform; /* Optional: Enhance the smoothness of repetitive animations */
+}
+
+.reveal.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Delay the effect of the card alone a little */
+.story-cards .reveal:nth-child(1) { transition-delay: 0.1s; }
+.story-cards .reveal:nth-child(2) { transition-delay: 0.2s; }
+.story-cards .reveal:nth-child(3) { transition-delay: 0.3s; }
 
 </style>
 
