@@ -1,0 +1,22 @@
+version: 1
+applications:
+  - appRoot: YourView_Frontend   
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+    rewrites:
+      - source: </^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|svg|txt|webp)$)([^.]+$)/>
+        target: /index.html
+        status: 200
