@@ -58,8 +58,8 @@
             {{ searching ? 'Searching...' : 'Search' }}
           </button>
 
-          <button class="btn" @click="loadDemo('day')">Daytime</button>
-          <button class="btn ghost" @click="loadDemo('night')">Night</button>
+          <!-- <button class="btn" @click="loadDemo('day')">Daytime</button>
+          <button class="btn ghost" @click="loadDemo('night')">Night</button> -->
         </div>
       </div>
 
@@ -216,14 +216,53 @@ function goToCoords(lat, lon, name = '') {
 
 /** Init Leaflet */
 onMounted(() => {
-  map = L.map(mapRef.value).setView(DEFAULT_CENTER, 14)
+  const BOUNDS = L.latLngBounds(
+    L.latLng(-38.3, 144.4), // SW
+    L.latLng(-37.4, 145.7)  // NE
+  )
+
+  map = L.map(mapRef.value, {
+    center: DEFAULT_CENTER,
+    zoom: 13,
+    maxBounds: BOUNDS,
+    maxBoundsViscosity: 1.0, // It feels sticky when dragged to the boundary and cannot be dragged out
+    zoomSnap: 0.5,           // Smoother zoom steps
+    zoomDelta: 0.5,
+    wheelDebounceTime: 40,   // Smooth roller
+  })
+
+  // Set the minimum zoom level to "just enough to view the entire Melbourne border"
+  const minFitZoom = map.getBoundsZoom(BOUNDS, true) // true= inside
+  map.setMinZoom(minFitZoom-2)
+
+  // It is best for the initial view to also conform to the boundary (to avoid crossing the boundary at the beginning).
+  map.fitBounds(BOUNDS, { animate: false })
+
+  // base map
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap',
   }).addTo(map)
 
+  // When the window size changes, recalculate the minZoom to prevent users from continuing to zoom out of bounds on small screens
+  window.addEventListener('resize', handleResize)
+
+  // Then continue with logic such as the heat point
   loadDemo('day')
 })
+
+function handleResize () {
+  if (!map) return
+  // Recalculate the minimum scaling that "can cover the border of Melbourne"
+  const BOUNDS = L.latLngBounds(
+    L.latLng(-38.3, 144.4),
+    L.latLng(-37.4, 145.7)
+  )
+  const minFitZoom = map.getBoundsZoom(BOUNDS, true)
+  map.setMinZoom(minFitZoom)
+}
+
+
 </script>
 
 <style scoped>

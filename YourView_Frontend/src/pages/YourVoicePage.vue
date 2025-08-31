@@ -77,7 +77,13 @@
             Share your concern and feedback about urban heat in your neighbourhood.
             Let’s encourage more shade, trees, and green infrastructure.
           </p>
-          <button class="btn-black" disabled title="Coming soon">Notify Council (Coming Soon)</button>
+<button
+  class="btn-black"
+  @click="goToCouncil"
+>
+  Notify Council
+</button>
+
         </div>
       </div>
     </section>
@@ -228,6 +234,11 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick)
   if (io) io.disconnect()
 })
+
+function goToCouncil() {
+  window.open("https://services.melbourne.vic.gov.au/report/treemaintenance", "_blank")
+}
+
 </script>
 
 <style scoped>

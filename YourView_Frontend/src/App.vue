@@ -79,7 +79,7 @@ import logo from '@/assets/logo.png'
   background: 0;
 }
 .logo {
-  height: 40px;   /* Change size */
+  height: 200px;   /* Change size */
   width: auto;
 }
 </style>
