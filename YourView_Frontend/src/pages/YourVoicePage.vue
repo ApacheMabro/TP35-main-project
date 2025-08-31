@@ -87,7 +87,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
-/** ————— Laneway options (example list) ————— */
+/**  Laneway options (example list)  */
 const laneways = [
   'AC/DC Lane',
   'Degraves Street',
@@ -97,14 +97,14 @@ const laneways = [
   'Centre Place',
 ]
 
-/** ————— Form state ————— */
+/**  Form state */
 const form = ref({
   laneway: '',
   address: '',
   reason: ''
 })
 
-/** ————— Address autocomplete state ————— */
+/**  Address autocomplete state  */
 const addrQuery = ref('')
 const addrSuggestions = ref([])
 const showAddrDropdown = ref(false)
@@ -180,7 +180,7 @@ function onDocClick(e) {
   }
 }
 
-/** ————— Submit (stub) ————— */
+/**  Submit (stub)  */
 function submitNomination () {
   // simple validation
   if (!form.value.laneway || !addrQuery.value || !form.value.reason) {
@@ -202,7 +202,7 @@ function submitNomination () {
   activeIndex.value = -1
 }
 
-/** ————— Scroll reveal ————— */
+/**  Scroll reveal  */
 const revealRoot = ref(null)
 let io = null
 
