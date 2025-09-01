@@ -127,7 +127,7 @@
               <template v-else>
                 <img :src="previewUrl" alt="Preview" class="dz-preview" />
               </template>
-              <input ref="fileInput" type="file" accept="image/*" class="hidden-input" @change="handleFile" />
+              <input ref="fileInput" type="file" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.jfif,.heic,.heif,.tif,.tiff" class="hidden-input" @change="handleFile" />
             </div>
 
             <div class="dz-actions">
@@ -154,14 +154,32 @@
           </div>
           <div class="form-field">
             <label class="label">Address</label>
-            <div class="address-row">
+            <div class="address-row" ref="dropdownRef">
               <span class="addr-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="18" height="18">
-                  <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/>
+                  <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none" />
                   <line x1="16.65" y1="16.65" x2="21" y2="21" stroke="currentColor" stroke-width="2" />
                 </svg>
               </span>
-              <input type="text" v-model.trim="form.address" @blur="validateAddress" placeholder="Search address" />
+              <input
+                type="text"
+                v-model="form.address"
+                @input="onInput"
+                @focus="showDropdown = predictions.length > 0"
+                @keydown.down.prevent="moveActive(1)"
+                @keydown.up.prevent="moveActive(-1)"
+                @keydown.enter.prevent="confirmActive"
+                @keydown.esc.prevent="hideDropdown"
+                placeholder="Search address"/>
+              <ul v-if="showDropdown && predictions.length" class="autocomplete-list">
+                <li v-for="(item, i) in predictions"
+                  :key="item.place_id"
+                  :class="{ active: i === activeIndex }"
+                  @mousedown.prevent="selectPrediction(item)">
+                  <div class="primary" v-html="formatPrimary(item)"></div>
+                  <div class="secondary">{{ item.structured_formatting?.secondary_text }}</div>
+                </li>
+              </ul>
             </div>
             <div class="error" v-if="errors.address">Address is required</div>
           </div>
@@ -229,8 +247,8 @@ const showResult = ref(false);
 const resultRef = ref(null);
 
 const trees = ref(0);
-const canopy = ref(24);
-const parkDistance = ref(656);
+const canopy = ref(36);
+const parkDistance = ref(256);
 
 const pass3 = computed(() => trees.value >= 3);
 const pass30 = computed(() => canopy.value >= 30);
@@ -265,10 +283,15 @@ function handleDrop(e) {
   if (f) loadFile(f);
 }
 function loadFile(f) {
-  if (!f.type.startsWith("image/")) return;
+  const name = (f.name || "").toLowerCase();
+  const mime = (f.type || "").toLowerCase();
+  const byMime = mime.startsWith("image/");
+  const byExt = /\.(png|jpe?g|jfif|gif|webp|bmp|heic|heif|tiff?)$/i.test(name);
+  if (!byMime && !byExt) return;
   file.value = f;
   previewUrl.value = URL.createObjectURL(f);
 }
+
 
 function validateTrees(mode) {
   const v = String(form.trees).trim();
@@ -296,6 +319,133 @@ async function submit() {
   await nextTick();
   resultRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
+
+import { onMounted, onBeforeUnmount } from 'vue'
+
+let acSvc = null
+let sessionToken = null
+
+const predictions = ref([])
+const showDropdown = ref(false)
+const activeIndex = ref(-1)
+const dropdownRef = ref(null)
+
+function loadGoogle() {
+  if (window.google?.maps) {
+    acSvc = new google.maps.places.AutocompleteService()
+    newSession()
+  }
+}
+
+function newSession() {
+  sessionToken = new google.maps.places.AutocompleteSessionToken()
+}
+
+function onInput() {
+  if (!form.address.trim()) {
+    predictions.value = []
+    showDropdown.value = false
+    activeIndex.value = -1
+    return
+  }
+  fetchPredictionsDebounced()
+}
+
+let debounceId = null
+function fetchPredictionsDebounced() {
+  if (debounceId) clearTimeout(debounceId)
+  debounceId = setTimeout(fetchPredictions, 200)
+}
+
+function fetchPredictions() {
+  if (!form.address.trim()) return
+
+  const req = {
+    input: form.address,
+    sessionToken,
+    componentRestrictions: { country: 'AU' },
+    types: ['address'],
+  }
+
+  acSvc.getPlacePredictions(req, (res, status) => {
+    if (status !== google.maps.places.PlacesServiceStatus.OK || !res) {
+      predictions.value = []
+      showDropdown.value = false
+      return
+    }
+    predictions.value = res
+    activeIndex.value = -1
+    showDropdown.value = true
+  })
+}
+
+function selectPrediction(p) {
+  form.address = p.description
+  predictions.value = []
+  showDropdown.value = false
+  newSession()
+}
+
+function moveActive(delta) {
+  const len = predictions.value.length
+  if (!len) return
+  activeIndex.value = (activeIndex.value + delta + len) % len
+}
+
+function confirmActive() {
+  if (activeIndex.value >= 0 && activeIndex.value < predictions.value.length) {
+    selectPrediction(predictions.value[activeIndex.value])
+  }
+}
+
+function hideDropdown() {
+  showDropdown.value = false
+  activeIndex.value = -1
+}
+
+function formatPrimary(p) {
+  const sf = p.structured_formatting
+  if (!sf) return p.description
+  let text = sf.main_text
+  if (sf.main_text_matched_substrings?.length) {
+    const [{ offset, length }] = sf.main_text_matched_substrings
+    const a = text.slice(0, offset)
+    const b = text.slice(offset, offset + length)
+    const c = text.slice(offset + length)
+    return `${a}<strong>${b}</strong>${c}`
+  }
+  return text
+}
+
+function handleClickOutside(e) {
+  if (!dropdownRef.value?.contains(e.target)) {
+    hideDropdown()
+  }
+}
+
+function loadGoogleMapsScript() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps) return resolve()
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`
+    script.async = true
+    script.defer = true
+    script.onload = resolve
+    script.onerror = () => reject(new Error('Google Maps script failed to load'))
+    document.head.appendChild(script)
+  })
+}
+
+onMounted(async () => {
+  await loadGoogleMapsScript()
+  loadGoogle()
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
 </script>
 
 <style scoped>
@@ -350,7 +500,7 @@ async function submit() {
 .result-title { font-size: 2rem; margin-bottom: 4px; }
 .result-sub { color: #333; }
 .result-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: start; margin-top: 18px; }
-.result-photo img { width: 100%; height: auto; border-radius: 8px; object-fit: cover; }
+.result-photo img { max-width: 100%; max-height: 400px; object-fit: cover; border-radius: 8px; }
 .result-cards { display: grid; gap: 16px; }
 .check-card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; background: #f7faf7; }
 .check-card.bad { background: #fdeeee; }
@@ -376,7 +526,13 @@ async function submit() {
 .accordion-enter-from, .accordion-leave-to { max-height: 0; opacity: 0; }
 .accordion-enter-to, .accordion-leave-from { max-height: 240px; opacity: 1; }
 .accordion-enter-active, .accordion-leave-active { transition: max-height 0.25s ease, opacity 0.25s ease; }
-.dz-preview { width: 100%; height: 100%; object-fit: contain; display: block; }
+.dz-preview { max-width: 100%; max-height: 300px; object-fit: contain; }
 .dz-actions { text-align: center; }
+.autocomplete-list { position: absolute; z-index: 999; width: 100%; background: #fff; border: 1px solid #ccc; border-radius: 6px; max-height: 240px; overflow-y: auto; list-style: none; padding: 6px 0; margin: 2px 0 0; }
+.autocomplete-list li { padding: 8px 12px; cursor: pointer; }
+.autocomplete-list li.active,
+.autocomplete-list li:hover { background: #f0f0f0; }
+.primary { font-weight: bold; }
+.secondary { font-size: 12px; color: #666; }
 </style>
 
