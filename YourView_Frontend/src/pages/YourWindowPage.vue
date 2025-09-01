@@ -247,8 +247,8 @@ const showResult = ref(false);
 const resultRef = ref(null);
 
 const trees = ref(0);
-const canopy = ref(24);
-const parkDistance = ref(656);
+const canopy = ref(36);
+const parkDistance = ref(256);
 
 const pass3 = computed(() => trees.value >= 3);
 const pass30 = computed(() => canopy.value >= 30);
@@ -363,7 +363,7 @@ function fetchPredictions() {
   const req = {
     input: form.address,
     sessionToken,
-    componentRestrictions: { country: 'AU' }, // 改成你的目标区域
+    componentRestrictions: { country: 'AU' },
     types: ['address'],
   }
 
@@ -500,7 +500,7 @@ onBeforeUnmount(() => {
 .result-title { font-size: 2rem; margin-bottom: 4px; }
 .result-sub { color: #333; }
 .result-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: start; margin-top: 18px; }
-.result-photo img { width: 100%; height: auto; border-radius: 8px; object-fit: cover; }
+.result-photo img { max-width: 100%; max-height: 400px; object-fit: cover; border-radius: 8px; }
 .result-cards { display: grid; gap: 16px; }
 .check-card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; background: #f7faf7; }
 .check-card.bad { background: #fdeeee; }
@@ -526,39 +526,13 @@ onBeforeUnmount(() => {
 .accordion-enter-from, .accordion-leave-to { max-height: 0; opacity: 0; }
 .accordion-enter-to, .accordion-leave-from { max-height: 240px; opacity: 1; }
 .accordion-enter-active, .accordion-leave-active { transition: max-height 0.25s ease, opacity 0.25s ease; }
-.dz-preview { width: 100%; height: 100%; object-fit: contain; display: block; }
+.dz-preview { max-width: 100%; max-height: 300px; object-fit: contain; }
 .dz-actions { text-align: center; }
-.autocomplete-list {
-  position: absolute;
-  z-index: 999;
-  width: 100%;
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  max-height: 240px;
-  overflow-y: auto;
-  list-style: none;
-  padding: 6px 0;
-  margin: 2px 0 0;
-}
-
-.autocomplete-list li {
-  padding: 8px 12px;
-  cursor: pointer;
-}
-
+.autocomplete-list { position: absolute; z-index: 999; width: 100%; background: #fff; border: 1px solid #ccc; border-radius: 6px; max-height: 240px; overflow-y: auto; list-style: none; padding: 6px 0; margin: 2px 0 0; }
+.autocomplete-list li { padding: 8px 12px; cursor: pointer; }
 .autocomplete-list li.active,
-.autocomplete-list li:hover {
-  background: #f0f0f0;
-}
-
-.primary {
-  font-weight: bold;
-}
-
-.secondary {
-  font-size: 12px;
-  color: #666;
-}
+.autocomplete-list li:hover { background: #f0f0f0; }
+.primary { font-weight: bold; }
+.secondary { font-size: 12px; color: #666; }
 </style>
 
