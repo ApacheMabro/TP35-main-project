@@ -23,16 +23,36 @@
         <div class="card nominate reveal item-2">
           <h3>Nominate The Next Green Laneway</h3>
 
-          <!-- Laneway select -->
+          <!-- Searchable laneway dropdown (click-to-select only) -->
           <label class="label">Choose a laneway</label>
-          <select v-model="form.laneway" class="input">
-            <option disabled value="">Select a laneway…</option>
-            <option v-for="lane in laneways" :key="lane" :value="lane">{{ lane }}</option>
-          </select>
+          <div class="combo" ref="comboRef">
+            <!-- Input only filters; does NOT set form.laneway -->
+            <input
+              class="combo-input"
+              type="text"
+              v-model="laneSearch"
+              placeholder="Type to filter laneways…"
+              @focus="laneOpen = true"
+              @keydown.enter.prevent
+            />
+            <div class="selected" v-if="form.laneway">Selected: {{ form.laneway }}</div>
+
+            <ul v-show="laneOpen" class="combo-list">
+              <li
+                v-for="name in filteredLaneways"
+                :key="name"
+                class="combo-item"
+                @mousedown.prevent="pickLaneway(name)"
+              >
+                {{ name }}
+              </li>
+              <li v-if="!filteredLaneways.length" class="combo-empty">No results</li>
+            </ul>
+          </div>
 
           <!-- Address with autocomplete -->
           <label class="label">Address (with suggestions)</label>
-          <div class="search-wrap">
+          <div class="search-wrap" ref="addrWrapRef">
             <input
               v-model="addrQuery"
               class="input"
@@ -67,57 +87,119 @@
             placeholder="Share the reason (e.g., hot pavement, pedestrian traffic, schools nearby)…"
           ></textarea>
 
-          <button class="btn-black" @click="submitNomination">Submit Nomination</button>
+          <button class="btn-black" @click="submitNomination">Nominate Green Landway 🌳</button>
         </div>
 
-        <!-- Right: Inform council (dead button) -->
-        <div class="card council reveal item-3">
-          <h3>Inform Melbourne City Council</h3>
-          <p class="muted">
-            Share your concern and feedback about urban heat in your neighbourhood.
-            Let’s encourage more shade, trees, and green infrastructure.
-          </p>
-<button
-  class="btn-black"
-  @click="goToCouncil"
->
-  Notify Council
-</button>
+        <!-- Right: Inform council -->
+<div class="card council reveal item-3">
+  <h3>Inform Melbourne City Council</h3>
+  <p class="muted">“I want more trees outside my window.”</p>
+  <p class="muted">“The tree in Collins Street is dying.”</p>
+  <p class="muted">“Why is there no tree around Flinders Station?”</p>
+  <p class="muted">“Footscray trees are dying.”</p>
+  <p class="muted">“I need someone to have a look at Albert Park.”</p>
 
-        </div>
+  <button class="btn-black" @click="goToCouncil">
+    Request tree to council
+  </button>
+</div>
+
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
-/**  Laneway options (example list)  */
-const laneways = [
-  'AC/DC Lane',
-  'Degraves Street',
-  'Hardware Lane',
-  'Hosier Lane',
-  'Tattersalls Lane',
-  'Centre Place',
-]
-
-/**  Form state */
+/* ---------------- Form model ---------------- */
 const form = ref({
   laneway: '',
   address: '',
   reason: ''
 })
 
-/**  Address autocomplete state  */
+/* ---------------- Searchable Laneway (runtime fetch) ---------------- */
+// Final options list
+const lanewayList = ref([])
+// Input text for filtering
+const laneSearch = ref('')
+// Dropdown state
+const laneOpen = ref(false)
+// Root element for outside-click
+const comboRef = ref(null)
+
+/** Extract 'mapbase_1' from various JSON shapes */
+function extractLanewayNames(json) {
+  const out = []
+
+  // Case 1: direct array [{ mapbase_1 }]
+  if (Array.isArray(json)) {
+    for (const r of json) {
+      const v = r?.mapbase_1 ?? r?.Mapbase_1 ?? r?.MAPBASE_1
+      if (v) out.push(String(v).trim())
+    }
+  }
+
+  // Case 2: GeoJSON features[].properties.mapbase_1
+  if (json?.features && Array.isArray(json.features)) {
+    for (const f of json.features) {
+      const v =
+        f?.properties?.mapbase_1 ??
+        f?.properties?.Mapbase_1 ??
+        f?.properties?.MAPBASE_1
+      if (v) out.push(String(v).trim())
+    }
+  }
+
+  // Case 3: wrapped in records/data
+  const rec = json?.records || json?.data
+  if (Array.isArray(rec)) {
+    for (const r of rec) {
+      const v = r?.mapbase_1 ?? r?.Mapbase_1 ?? r?.MAPBASE_1
+      if (v) out.push(String(v).trim())
+    }
+  }
+
+  // Deduplicate + sort
+  return Array.from(new Set(out.filter(Boolean))).sort((a, b) => a.localeCompare(b))
+}
+
+/** Load JSON at runtime (robust to size/path) */
+async function loadLaneways() {
+  try {
+    const url = new URL('@/assets/laneways-with-greening-potential.json', import.meta.url).href
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const json = await res.json()
+    lanewayList.value = extractLanewayNames(json)
+  } catch (e) {
+    console.error('Failed to load laneways JSON:', e)
+    lanewayList.value = []
+  }
+}
+
+const filteredLaneways = computed(() => {
+  const q = laneSearch.value.trim().toLowerCase()
+  if (!q) return lanewayList.value
+  return lanewayList.value.filter(n => n.toLowerCase().includes(q))
+})
+
+function pickLaneway(name) {
+  form.value.laneway = name          // only click sets the form value
+  laneSearch.value = name            // optionally mirror into input
+  laneOpen.value = false
+}
+
+/* ---------------- Address Autocomplete (Nominatim) ---------------- */
+const addrWrapRef = ref(null)
 const addrQuery = ref('')
 const addrSuggestions = ref([])
 const showAddrDropdown = ref(false)
 const activeIndex = ref(-1)
 let debounceId = null
 
-/** Melbourne bounding box for Nominatim (lon,lat): left,top,right,bottom */
+// Melbourne bbox (lon,lat): left,top,right,bottom
 const VIEWBOX = {
   left: 144.4,
   top: -37.4,
@@ -125,7 +207,6 @@ const VIEWBOX = {
   bottom: -38.5
 }
 
-/** Fetch suggestions from Nominatim (debounced) */
 function onAddrInput () {
   const q = addrQuery.value.trim()
   if (!q) {
@@ -178,54 +259,54 @@ function chooseActive () {
   pickSuggestion(s)
 }
 
-/** Click outside to close dropdown */
-function onDocClick(e) {
-  const wrap = document.querySelector('.search-wrap')
-  if (wrap && !wrap.contains(e.target)) {
-    showAddrDropdown.value = false
-  }
-}
-
-/**  Submit (stub)  */
+/* ---------------- Submit ---------------- */
 function submitNomination () {
-  // simple validation
   if (!form.value.laneway || !addrQuery.value || !form.value.reason) {
     alert('Please complete laneway, address, and reason.')
     return
   }
-  // In real app: POST to backend
+  // TODO: Replace with real POST
   console.log('Nomination submitted:', {
     laneway: form.value.laneway,
     address: addrQuery.value,
     reason: form.value.reason
   })
   alert('Thanks for your nomination!')
-  // reset (optional)
   form.value = { laneway: '', address: '', reason: '' }
+  laneSearch.value = ''
   addrQuery.value = ''
   addrSuggestions.value = []
   showAddrDropdown.value = false
   activeIndex.value = -1
 }
 
-/**  Scroll reveal  */
+/* ---------------- Council link ---------------- */
+function goToCouncil() {
+  window.open('https://services.melbourne.vic.gov.au/report/treemaintenance', '_blank')
+}
+
+/* ---------------- Scroll reveal (loopable) ---------------- */
 const revealRoot = ref(null)
 let io = null
 
+function onDocClick(e) {
+  if (comboRef.value && !comboRef.value.contains(e.target)) laneOpen.value = false
+  if (addrWrapRef.value && !addrWrapRef.value.contains(e.target)) showAddrDropdown.value = false
+}
+
 onMounted(() => {
   document.addEventListener('click', onDocClick)
+  loadLaneways()
 
-  // reveal animation
-  io = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.classList.add('reveal-in')
-        io.unobserve(e.target)
-      }
-    })
-  }, { threshold: 0.15 })
-
-  // observe targets
+  io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) entry.target.classList.add('reveal-in')
+        else entry.target.classList.remove('reveal-in')
+      })
+    },
+    { threshold: 0.15, rootMargin: '0px 0px -5% 0px' }
+  )
   const targets = revealRoot.value?.querySelectorAll('.reveal') || []
   targets.forEach(el => io.observe(el))
 })
@@ -234,11 +315,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick)
   if (io) io.disconnect()
 })
-
-function goToCouncil() {
-  window.open("https://services.melbourne.vic.gov.au/report/treemaintenance", "_blank")
-}
-
 </script>
 
 <style scoped>
@@ -288,6 +364,7 @@ function goToCouncil() {
   opacity: 0;
   transform: translateY(20px);
   transition: all .6s ease;
+  will-change: opacity, transform;
 }
 .reveal.reveal-in {
   opacity: 1;
@@ -308,6 +385,33 @@ function goToCouncil() {
 }
 
 /* Two cards */
+.card.council {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+  min-height: 350px;
+}
+
+.card.council p {
+  font-weight: bold;
+  margin: 10px 0;
+}
+
+.card.council .btn-black {
+  margin-top: 20px;
+  align-self: center;
+}
+
+
+.card.council .muted {
+  font-weight: bold;
+  color: #111;
+  margin: 8px 0;
+}
+
 .cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -322,13 +426,15 @@ function goToCouncil() {
 }
 
 .card h3 {
+  font-weight: bold;
   margin: 0 0 12px;
   font-size: 1.2rem;
   color: #1f2937;
 }
 
-/* Inputs */
+/* Labels & Inputs */
 .label {
+  font-weight: bold;
   display: block;
   font-size: 12px;
   color: #6b7280;
@@ -356,7 +462,7 @@ function goToCouncil() {
   resize: vertical;
 }
 
-/* Search dropdown */
+/* Search dropdown (address) */
 .search-wrap { position: relative; }
 .suggestions {
   position: absolute;
@@ -396,10 +502,7 @@ function goToCouncil() {
 }
 .btn-black:hover { background: #222; }
 .btn-black:active { transform: translateY(1px); }
-.btn-black[disabled] {
-  opacity: .5;
-  cursor: not-allowed;
-}
+.btn-black[disabled] { opacity: .5; cursor: not-allowed; }
 
 /* Text */
 .muted {
@@ -407,11 +510,63 @@ function goToCouncil() {
   line-height: 1.6;
 }
 
+/* Searchable combo (laneway) */
+.combo {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+}
+.combo-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  outline: none;
+  font-size: 14px;
+}
+.combo-input:focus {
+  border-color: #cbd5e1;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+}
+.selected {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #475569;
+}
+.combo-list {
+  position: absolute;
+  z-index: 50;
+  left: 0;
+  right: 0;
+  margin: 6px 0 0;
+  max-height: 280px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.12);
+  list-style: none;
+  padding: 6px 0;
+}
+.combo-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  line-height: 1.1;
+}
+.combo-item:hover { background: #f8fafc; }
+.combo-empty {
+  padding: 12px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .voice-hero { grid-template-columns: 1fr; }
-  .hero-right { order: -1; } /* image first on small screens */
+  .hero-right { order: -1; }
   .cards { grid-template-columns: 1fr; }
 }
 </style>
+
 

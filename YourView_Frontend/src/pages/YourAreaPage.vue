@@ -56,6 +56,12 @@
       </div>
 
       <div ref="mapRef" class="map"></div>
+<div class="map-footer">
+  <div class="map-footer-title">Make Your Area Cooler</div>
+  <RouterLink to="/yourvoice">
+    <button class="btn-black">Nominate Green Landway 🌳</button>
+  </RouterLink>
+</div>
     </div>
   </div>
 </template>
@@ -458,6 +464,37 @@ onBeforeUnmount(() => {
 
 /* Refine the small square of legend (the main style has already been inline in JS, and here it serves as a supplement) */
 .leaflet-control .legend i { opacity: .9; }
+
+.map-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.map-footer-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #000;
+  text-align: center;
+}
+
+
+.btn-black {
+  background: #000;
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 0.98rem;
+  cursor: pointer;
+  transition: background .2s ease, transform .05s ease;
+  text-decoration: none;
+}
+.btn-black:hover { background: #222; }
+.btn-black:active { transform: translateY(1px); }
+
 </style>
 
 

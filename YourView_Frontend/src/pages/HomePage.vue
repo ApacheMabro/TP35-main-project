@@ -47,19 +47,22 @@
         <h2>Our Stories</h2>
         <div class="story-cards">
           <div class="card">
-            <img :src="images[4]" alt="Abdul" />
-            <h3>Abdul</h3>
-            <p>Body text for Abdul's story...</p>
-          </div>
-          <div class="card">
             <img :src="images[5]" alt="Maria" />
             <h3>Maria</h3>
-            <p>Body text for Maria's story...</p>
+            <p>“I just want shady walks to uni and a park to study in. With YourView,
+              I can check if my area meets green standards and call for trees in my laneway.”</p>
+          </div>
+          <div class="card">
+            <img :src="images[4]" alt="Abdul" />
+            <h3>Abdul</h3>
+            <p>“Hot, treeless streets exhaust me on my bike and make every delivery harder. With YourView,
+              I can spot where shade is missing and push for cooler, safer routes for my health.”</p>
           </div>
           <div class="card">
             <img :src="images[6]" alt="Teacher" />
-            <h3>Teacher</h3>
-            <p>Body text for Teacher's story...</p>
+            <h3>Janet</h3>
+            <p>“My students are stuck in concrete. With YourView,
+              I get the data to fight for green school zones where kids can learn and play safely.”</p>
           </div>
         </div>
       </div>
@@ -98,13 +101,13 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 const images = [
-  new URL('@/assets/background1.png', import.meta.url).href,
-  new URL('@/assets/background2.jpeg', import.meta.url).href,
-  new URL('@/assets/background3.jpeg', import.meta.url).href,
+  new URL('@/assets/background1.jpg', import.meta.url).href,
+  new URL('@/assets/background2.jpg', import.meta.url).href,
+  new URL('@/assets/background3.jpg', import.meta.url).href,
   new URL('@/assets/WhyMatter.png', import.meta.url).href,
-  new URL('@/assets/Abdul.png', import.meta.url).href,
-  new URL('@/assets/Maria.png', import.meta.url).href,
-  new URL('@/assets/Teacher.png', import.meta.url).href,
+  new URL('@/assets/Abdul.jpg', import.meta.url).href,
+  new URL('@/assets/Maria.jpg', import.meta.url).href,
+  new URL('@/assets/Janet.jpg', import.meta.url).href,
 ]
 const backgroundimages = images.filter(img => img.includes("background"))
 const currentIndex = ref(0)
