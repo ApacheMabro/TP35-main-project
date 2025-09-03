@@ -5,8 +5,11 @@
       <div class="hero-left">
         <h1>Raise Your Voice</h1>
         <p>
-          Help make Melbourne greener. Nominate laneways that deserve trees and shade,
-          and tell the council why it matters.
+Your voice is important to Melbourne,
+you can request directly to the government about your concern of green space in your surrounding,
+also you can email to Urban Environmental Department if you see any tree is dying.
+Vote for the next green laneway to reduce heat pocket island in our city.
+We want to hear from you!
         </p>
       </div>
       <div class="hero-right">

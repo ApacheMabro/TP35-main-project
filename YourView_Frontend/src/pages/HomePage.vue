@@ -4,12 +4,36 @@
     <div class="carousel">
       <div
         class="carousel-track"
-        :style="{
-          transform: `translateX(-${currentIndex * 100}%)`,
-        }"
+        :style="{ transform: `translateX(-${currentIndex * 100}%)` }"
       >
         <div class="carousel-slide" v-for="(img, index) in backgroundimages" :key="index">
           <img :src="img" :alt="`Background ${index + 1}`" />
+        </div>
+      </div>
+
+      <!--  Left overlay card -->
+      <div class="hero-overlay">
+        <div class="overlay-card">
+          <h1 class="overlay-title">Turn Green Data Into Local Action</h1>
+
+          <p class="overlay-text">
+            Less than 25% of Melbourne has enough tree cover. You can check if your neighborhood
+            meets the 3-30-300 standard.
+          </p>
+
+          <p class="overlay-text">
+            YourView makes it simple to measure tree cover, find nearby parks, and show why your
+            area deserves more green space.
+          </p>
+
+          <div class="overlay-actions">
+            <RouterLink to="/yourwindow">
+              <button class="btn btn-green">See My Green Score</button>
+            </RouterLink>
+            <RouterLink to="/yourarea">
+              <button class="btn btn-amber">Check My Area Heat</button>
+            </RouterLink>
+          </div>
         </div>
       </div>
 
@@ -75,16 +99,11 @@
           :key="index"
           class="faq-item"
         >
-          <!-- Question Section -->
           <div class="faq-question" @click="toggle(index)">
             <strong>{{ item.question }}</strong>
-            <span
-              class="arrow"
-              :class="{ open: openIndex === index }"
-            >▼</span>
+            <span class="arrow" :class="{ open: openIndex === index }">▼</span>
           </div>
 
-          <!-- Answer section -->
           <transition name="faq">
             <div v-show="openIndex === index" class="faq-answer">
               {{ item.answer }}
@@ -92,7 +111,6 @@
           </transition>
         </div>
       </div>
-
     </section>
   </div>
 </template>
@@ -119,30 +137,21 @@ onMounted(() => {
     currentIndex.value = (currentIndex.value + 1) % backgroundimages.length
   }, 5000)
 
-  // Cyclically triggered IntersectionObserver
+  // Cyclic IntersectionObserver for reveal sections
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
-          // Enter the viewport: Add show -> Fade in
           entry.target.classList.add('show')
         } else {
-          // To leave the viewport: Remove show -> Reset to fade state
           entry.target.classList.remove('show')
         }
       })
     },
-    {
-      // threshold: 0.15,         // It is triggered only when more than 15% is visible
-      rootMargin: '0px 0px -5% 0px', // It can be triggered slightly earlier or disappear later, and can be adjusted as needed
-    }
+    { rootMargin: '0px 0px -5% 0px' }
   )
-
   document.querySelectorAll('.reveal').forEach((el) => observer.observe(el))
 })
-
-
-
 
 onUnmounted(() => {
   clearInterval(intervalId)
@@ -152,32 +161,16 @@ const goToSlide = (index) => {
   currentIndex.value = index
 }
 
-
 const openIndex = ref(null)
-
 const faqItems = [
-  {
-    question: "Do I have to live in Melbourne?",
-    answer: "No, anyone can use our website."
-  },
-  {
-    question: "Why upload my window photo?",
-    answer: "So we can measure tree visibility."
-  },
-  {
-    question: "Where can I find the map?",
-    answer: "On the homepage navigation bar."
-  },
-  {
-    question: "Do you have a mobile app?",
-    answer: "We are planning it soon."
-  }
+  { question: "Do I have to live in Melbourne?", answer: "No, anyone can use our website." },
+  { question: "Why upload my window photo?", answer: "So we can measure tree visibility." },
+  { question: "Where can I find the map?", answer: "On the homepage navigation bar." },
+  { question: "Do you have a mobile app?", answer: "We are planning it soon." },
 ]
-
 const toggle = (index) => {
   openIndex.value = openIndex.value === index ? null : index
 }
-
 </script>
 
 <style scoped>
@@ -207,13 +200,83 @@ const toggle = (index) => {
   object-fit: cover;
 }
 
+/*  Overlay card on the left + entrance animation */
+.hero-overlay {
+  position: absolute;
+  top: 10%;
+  left: 6%;
+  z-index: 3;
+  width: min(520px, 86vw);
+}
+
+.overlay-card {
+  background: rgba(255, 255, 255, 0.65);
+  color: #0b1f16;
+  border-radius: 0;
+  padding: 100px 30px;
+  min-height: 320px;
+  width: min(800px, 92vw);
+  box-shadow: 0 10px 32px rgba(0,0,0,.18);
+  backdrop-filter: blur(4px);
+
+
+  opacity: 0;
+  transform: translateX(-10px) translateY(8px) scale(0.99);
+  animation: overlayEnter .8s ease forwards .2s;
+}
+
+
+@keyframes overlayEnter {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.overlay-title {
+  font-size: clamp(20px, 3.2vw, 32px);
+  font-weight: 900;
+  margin: 0 0 10px;
+  line-height: 1.2;
+}
+.overlay-text {
+  margin: 10px 0 0;
+  font-size: clamp(13px, 1.4vw, 16px);
+  line-height: 1.55;
+  color: #133a2a;
+}
+.overlay-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* Buttons */
+.btn {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.98rem;
+  cursor: pointer;
+  transition: transform .05s ease, filter .2s ease, opacity .2s ease;
+  color: #fff;
+}
+.btn:active { transform: translateY(1px); }
+
+.btn-green { background: #2e7d32; }
+.btn-green:hover { filter: brightness(1.05); }
+
+.btn-amber { background: #b7791f; }
+.btn-amber:hover { filter: brightness(1.05); }
+
+/* Dots */
 .carousel-dots {
   position: absolute;
   bottom: 20px;
   width: 100%;
   text-align: center;
 }
-
 .dot {
   display: inline-block;
   width: 10px;
@@ -275,100 +338,52 @@ const toggle = (index) => {
   border-radius: 8px;
 }
 
-.faq ul {
-  list-style: none;
-  padding: 0;
-}
-.faq li {
-  margin-bottom: 15px;
-}
+.faq ul { list-style: none; padding: 0; }
+.faq li { margin-bottom: 15px; }
 
-.stories {
-  padding: 40px 80px;
-}
-.faq {
-  max-width: 600px;
-  margin: 0 auto;
-}
+.stories { padding: 40px 80px; }
+.faq { max-width: 600px; margin: 0 auto; }
 
-.faq-item {
-  border-bottom: 1px solid #ddd;
-  padding: 10px 0;
-}
-
+.faq-item { border-bottom: 1px solid #ddd; padding: 10px 0; }
 .faq-question {
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
 }
+.arrow { transition: transform 0.3s ease; }
+.arrow.open { transform: rotate(180deg); }
+.faq-answer { padding: 10px 0; color: #555; }
 
-.arrow {
-  transition: transform 0.3s ease;
-}
+/* Accordion animation */
+.faq-enter-active, .faq-leave-active { transition: all 0.3s ease; }
+.faq-enter-from, .faq-leave-to { max-height: 0; opacity: 0; overflow: hidden; }
+.faq-enter-to, .faq-leave-from { max-height: 200px; opacity: 1; }
 
-.arrow.open {
-  transform: rotate(180deg);
-}
-
-.faq-answer {
-  padding: 10px 0;
-  color: #555;
-}
-
-/* Pull the drawing down */
-.faq-enter-active, .faq-leave-active {
-  transition: all 0.3s ease;
-}
-.faq-enter-from, .faq-leave-to {
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-}
-.faq-enter-to, .faq-leave-from {
-  max-height: 200px;
-  opacity: 1;
-}
-
-
-.card {
-  flex: 1;
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-  text-align: center;
-  transition: transform 0.3s ease;
-}
-
-.card img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  margin-bottom: 15px;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-}
-
-/* --- Reveal animation --- */
+/* --- Reveal on scroll --- */
 .reveal {
   opacity: 0;
   transform: translateY(40px);
   transition: opacity 0.8s ease, transform 0.8s ease;
-  will-change: opacity, transform; /* Optional: Enhance the smoothness of repetitive animations */
+  will-change: opacity, transform;
 }
-
 .reveal.show {
   opacity: 1;
   transform: translateY(0);
 }
 
-/* Delay the effect of the card alone a little */
+/* Stagger */
 .story-cards .reveal:nth-child(1) { transition-delay: 0.1s; }
 .story-cards .reveal:nth-child(2) { transition-delay: 0.2s; }
 .story-cards .reveal:nth-child(3) { transition-delay: 0.3s; }
 
+/* Responsive tweaks */
+@media (max-width: 900px) {
+  .hero-overlay { left: 4%; top: 6%; width: 92vw; }
+  .overlay-actions { flex-direction: column; }
+  .why-container { flex-direction: column; }
+  .card { width: 100%; }
+}
 </style>
+
 
