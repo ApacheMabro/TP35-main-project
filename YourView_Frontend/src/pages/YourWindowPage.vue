@@ -1,4 +1,5 @@
 <template>
+
   <div class="green-page">
     <div class="page">
       <div class="hero">
@@ -145,7 +146,7 @@
             </button>
           </div>
         </div>
-        
+
         <div v-else class="step-pane">
           <div class="form-field">
             <label class="label">Number of trees outside your window</label>
@@ -222,6 +223,7 @@
       </div>
     </div>
   </div>
+
 </template>
 
 <script setup>
@@ -534,5 +536,7 @@ onBeforeUnmount(() => {
 .autocomplete-list li:hover { background: #f0f0f0; }
 .primary { font-weight: bold; }
 .secondary { font-size: 12px; color: #666; }
+
+
 </style>
 

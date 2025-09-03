@@ -1,4 +1,5 @@
 <template>
+
   <div class="view-page">
     <!-- Hero: top half screen -->
     <section class="voice-hero">
@@ -110,6 +111,7 @@ We want to hear from you!
       </div>
     </section>
   </div>
+
 </template>
 
 <script setup>
@@ -570,6 +572,9 @@ onBeforeUnmount(() => {
   .hero-right { order: -1; }
   .cards { grid-template-columns: 1fr; }
 }
+
+
+
 </style>
 
 

@@ -1,4 +1,5 @@
 <template>
+
   <div>
     <!-- Hero carousel -->
     <div class="carousel">
@@ -113,6 +114,7 @@
       </div>
     </section>
   </div>
+
 </template>
 
 <script setup>
@@ -384,6 +386,8 @@ const toggle = (index) => {
   .why-container { flex-direction: column; }
   .card { width: 100%; }
 }
+
+
 </style>
 
 

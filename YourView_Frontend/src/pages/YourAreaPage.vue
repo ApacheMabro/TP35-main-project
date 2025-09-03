@@ -1,4 +1,5 @@
 <template>
+
   <div class="area-page">
     <!-- Top introduction area -->
     <div class="intro-section">
@@ -64,6 +65,7 @@
 </div>
     </div>
   </div>
+
 </template>
 
 <script setup>
@@ -494,6 +496,7 @@ onBeforeUnmount(() => {
 }
 .btn-black:hover { background: #222; }
 .btn-black:active { transform: translateY(1px); }
+
 
 </style>
 
