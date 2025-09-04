@@ -1,4 +1,5 @@
 <template>
+
   <div class="green-page">
     <div class="page">
       <div class="hero">
@@ -181,7 +182,7 @@
             </button>
           </div>
         </div>
-        
+
         <div v-else class="step-pane">
           <div class="form-field">
             <label class="label">Number of trees outside your window</label>
@@ -258,6 +259,7 @@
       </div>
     </div>
   </div>
+
 </template>
 
 <script setup>

@@ -1,6 +1,42 @@
-@import './base.css';
+/* @import './base.css';
 html, body { background: #FAFFE8 !important; }
-#app, .main, .page, .container { background: transparent !important; }
+#app, .main, .page, .container { background: transparent !important; } */
+
+@import './base.css';
+
+/* Unify the color matching variables*/
+:root {
+  --bg: #FAFFE8;      /* Global background */
+  --fg: #0f172a;      /* Global text color (dark) */
+  --fg-dim: #334155;  /* Secondary text */
+}
+
+/* Key point: Tell the browser that this site uses a light color scheme and don't automatically darken/lighten it for me */
+html {
+  background: var(--bg) !important;
+  color-scheme: light;          /* turn off auto-dark "smart color change" */
+}
+
+/* The default color and background of the main text */
+body {
+  background: transparent;
+  color: var(--fg);
+  margin: 0;
+}
+
+/* Make the container transparent to reveal the global background */
+#app, .main, .page, .container {
+  background: transparent !important;
+  color: inherit; /* Follow the text color of the body */
+}
+
+/* Fallback: Even if the system is dark, it is mandatory to maintain the light color scheme */
+@media (prefers-color-scheme: dark) {
+  html, body {
+    background: var(--bg) !important;
+    color: var(--fg) !important;
+  }
+}
 
 
 

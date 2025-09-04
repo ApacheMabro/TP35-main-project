@@ -1,9 +1,8 @@
-<!-- src/pages/YourAreaPage.vue -->
 <template>
+
   <div class="area-page">
-    <!-- Top introduction section -->
+    <!-- Top introduction area -->
     <div class="intro-section">
-      <!-- Left text -->
       <div class="intro-text">
         <h1>Heat Pocket Island</h1>
         <p>
@@ -12,22 +11,19 @@
           paved or covered with buildings, which absorb and radiate heat.
         </p>
       </div>
-
-      <!-- Right images -->
       <div class="intro-images">
         <img src="@/assets/background5.png" alt="Heat Map Example 1" />
         <img src="@/assets/background6.png" alt="Heat Map Example 2" />
       </div>
     </div>
 
-    <!-- Map section below -->
+    <!-- Maps and toolbars -->
     <div class="map-wrapper">
       <div class="toolbar">
         <h2>Urban Heat Map - Melbourne</h2>
 
-        <!-- Controls: search (with autocomplete) + demo toggles -->
         <div class="controls">
-          <!-- Search box + suggestions dropdown -->
+          <!-- Search + Auto-completion -->
           <div class="search-wrap">
             <input
               v-model="searchQuery"
@@ -57,26 +53,37 @@
           <button class="btn" @click="searchLocation" :disabled="searching">
             {{ searching ? 'Searching...' : 'Search' }}
           </button>
-
-          <button class="btn" @click="loadDemo('day')">Daytime</button>
-          <button class="btn ghost" @click="loadDemo('night')">Night</button>
         </div>
       </div>
 
       <div ref="mapRef" class="map"></div>
+<div class="map-footer">
+  <div class="map-footer-title">Make Your Area Cooler</div>
+  <RouterLink to="/yourvoice">
+    <button class="btn-black">Nominate Green Landway 🌳</button>
+  </RouterLink>
+</div>
     </div>
   </div>
+
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.heat'
 
+// "Through?" Obtain the packaged static resource url through the URL method
+import geojsonUrl from '@/assets/sa2_heatmap.geojson?url'
+
 /** Leaflet map refs */
 const mapRef = ref(null)
-let map, heat, searchMarker
+let map, searchMarker
+
+/** Choropleth refs */
+let choroplethLayer
+let legendControl
 
 /** Search state */
 const searchQuery = ref('')
@@ -89,50 +96,144 @@ let debounceId = null
 /** Default center: Melbourne CBD */
 const DEFAULT_CENTER = [-37.8136, 144.9631]
 
-/** Demo heat points loader */
-function loadDemo(mode = 'day') {
-  const pts =
-    mode === 'day'
-      ? [
-          [-37.8136, 144.9631, 0.9],
-          [-37.815, 144.965, 0.85],
-          [-37.814, 144.97, 0.75],
-          [-37.818, 144.97, 0.7],
-          [-37.82, 144.965, 0.6],
-          [-37.8205, 144.957, 0.55], // beside Yarra River
-        ]
-      : [
-          [-37.8136, 144.9631, 0.6],
-          [-37.815, 144.965, 0.58],
-          [-37.814, 144.97, 0.52],
-          [-37.818, 144.97, 0.5],
-          [-37.82, 144.965, 0.42],
-          [-37.8205, 144.957, 0.38],
-        ]
+/** Color table (Light -> dark) */
+const PALETTE = ['#fee5d9', '#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15']
 
-  const latlngs = pts.map(([lat, lng, intensity]) => [lat, lng, intensity])
-  if (!heat) {
-    heat = L.heatLayer(latlngs, {
-      radius: 28,
-      blur: 18,
-      maxZoom: 17,
-      minOpacity: 0.35,
-      max: 1.0,
-    }).addTo(map)
-  } else {
-    heat.setLatLngs(latlngs)
+/** Create isometric grading color codes based on numerical values */
+function makeColorScale(values, k = PALETTE.length) {
+  const nums = values.filter(v => typeof v === 'number' && !Number.isNaN(v))
+  const min = Math.min(...nums)
+  const max = Math.max(...nums)
+  const step = (max - min) / k
+  const breaks = Array.from({ length: k + 1 }, (_, i) => (i === k ? max : min + i * step))
+  return {
+    breaks,
+    colorOf(v) {
+      if (v == null || Number.isNaN(v)) return '#ccc'
+      for (let i = k - 1; i >= 0; i--) {
+        if (v >= breaks[i]) return PALETTE[i]
+      }
+      return PALETTE[0]
+    },
+    range: [min, max],
   }
 }
 
-/** Search via Nominatim (when pressing Search button or Enter) */
+/** Hover HighLight */
+function highlightFeature(e) {
+  const layer = e.target
+  layer.setStyle({ weight: 2, color: '#111', fillOpacity: 0.85 })
+  layer.bringToFront()
+}
+function resetHighlight(e) {
+  choroplethLayer?.resetStyle(e.target)
+}
+
+/** Load and render the SA2 UHI hierarchical shading map */
+async function loadUHIChoropleth() {
+  try {
+    const res = await fetch(geojsonUrl, { headers: { Accept: 'application/json' } })
+    const gj = await res.json()
+
+    // Collect numerical values
+    const allVals = []
+    for (const f of gj.features || []) {
+      const v = Number(f?.properties?.uhi_value)
+      if (!Number.isNaN(v)) allVals.push(v)
+    }
+    if (!allVals.length) {
+      console.warn('No numeric uhi_value found in GeoJSON.')
+      return
+    }
+    const scale = makeColorScale(allVals)
+
+    // Create a GeoJSON layer (supports Polygon/MultiPolygon)
+    choroplethLayer = L.geoJSON(gj, {
+      style: feat => {
+        const v = Number(feat?.properties?.uhi_value)
+        return {
+          weight: 1,
+          color: '#555',
+          opacity: 0.8,
+          fillOpacity: 0.7,
+          fillColor: scale.colorOf(v),
+        }
+      },
+      onEachFeature: (feat, layer) => {
+        const p = feat.properties || {}
+        const name = p.sa2_name21 ?? 'Unknown SA2'
+        const code = p.sa2_code21 ?? '-'
+        const uhi = (p.uhi_value ?? '—')
+        layer.bindPopup(
+          `<div style="min-width:220px">
+             <div style="font-weight:700;margin-bottom:4px">${name}</div>
+             <div>SA2 Code: ${code}</div>
+             <div>UHI Value: <b>${uhi}</b></div>
+           </div>`
+        )
+        layer.on({
+          mouseover: highlightFeature,
+          mouseout: resetHighlight,
+          click: e => layer.openPopup(e.latlng),
+        })
+      },
+    }).addTo(map)
+
+    // Click on the block to automatically scale
+    choroplethLayer.on('click', e => {
+      if (e.layer && e.layer.getBounds) {
+        map.fitBounds(e.layer.getBounds(), { maxZoom: 14, animate: true })
+      }
+    })
+
+    // Add a legend
+    addLegend(scale)
+  } catch (err) {
+    console.error('Failed to load choropleth:', err)
+    alert('The UHI heatmap failed to load. Please check if the assets/sa2_heatmap.geojson exists and is in the correct format.')
+  }
+}
+
+/** Legend Control */
+function addLegend(scale) {
+  // First, remove the old legend
+  if (legendControl) map.removeControl(legendControl)
+
+  const { breaks, range } = scale
+  legendControl = L.control({ position: 'bottomright' })
+  legendControl.onAdd = function () {
+    const div = L.DomUtil.create('div', 'info legend')
+    div.style.background = 'white'
+    div.style.padding = '8px 10px'
+    div.style.borderRadius = '8px'
+    div.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'
+    div.style.fontSize = '12px'
+    div.innerHTML = `<div style="font-weight:700;margin-bottom:6px">UHI Value</div>`
+    for (let i = 0; i < PALETTE.length; i++) {
+      const from = breaks[i]
+      const to = breaks[i + 1]
+      const label = (i === PALETTE.length - 1)
+        ? `${from.toFixed(2)}+`
+        : `${from.toFixed(2)} – ${to.toFixed(2)}`
+      div.innerHTML += `
+        <div style="display:flex;align-items:center;margin:4px 0;">
+          <i style="width:16px;height:12px;background:${PALETTE[i]};display:inline-block;margin-right:8px;border:1px solid #999"></i>
+          <span>${label}</span>
+        </div>`
+    }
+    div.innerHTML += `<div style="margin-top:6px;color:#6b7280">min: ${range[0].toFixed(2)} · max: ${range[1].toFixed(2)}</div>`
+    return div
+  }
+  legendControl.addTo(map)
+}
+
+/** Search */
 async function searchLocation() {
   const q = searchQuery.value.trim()
   if (!q) return
   searching.value = true
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=${encodeURIComponent(
-      q
-    )}`
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=${encodeURIComponent(q)}`
     const res = await fetch(url, { headers: { Accept: 'application/json' } })
     const data = await res.json()
     if (!Array.isArray(data) || !data.length) {
@@ -149,7 +250,7 @@ async function searchLocation() {
   }
 }
 
-/** Debounced input to fetch autocomplete suggestions */
+/** Auto-completion (anti-shake) */
 function onSearchInput() {
   const q = searchQuery.value.trim()
   if (!q) {
@@ -161,15 +262,11 @@ function onSearchInput() {
   if (debounceId) clearTimeout(debounceId)
   debounceId = setTimeout(fetchSuggestions, 250)
 }
-
-/** Fetch top-5 suggestions from Nominatim */
 async function fetchSuggestions() {
   const q = searchQuery.value.trim()
   if (!q) return
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(
-      q
-    )}`
+    const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(q)}`
     const res = await fetch(url, { headers: { Accept: 'application/json' } })
     const data = await res.json()
     suggestions.value = Array.isArray(data) ? data : []
@@ -181,15 +278,11 @@ async function fetchSuggestions() {
     activeIndex.value = -1
   }
 }
-
-/** Pick a suggestion from dropdown */
 function pickSuggestion(s) {
   searchQuery.value = s.display_name || ''
   showDropdown.value = false
   goToCoords(parseFloat(s.lat), parseFloat(s.lon), s.display_name)
 }
-
-/** Keyboard navigation on dropdown */
 function moveActive(delta) {
   if (!showDropdown.value || !suggestions.value.length) return
   const n = suggestions.value.length
@@ -201,7 +294,7 @@ function chooseActive() {
   pickSuggestion(s)
 }
 
-/** Move map + drop/update a single marker and popup */
+/** The map locates the coordinates and places/updates individual markers */
 function goToCoords(lat, lon, name = '') {
   const coords = [lat, lon]
   map.setView(coords, 15, { animate: true })
@@ -214,15 +307,56 @@ function goToCoords(lat, lon, name = '') {
   showDropdown.value = false
 }
 
-/** Init Leaflet */
+/** Initialize the Leaflet map and load the heat map */
 onMounted(() => {
-  map = L.map(mapRef.value).setView(DEFAULT_CENTER, 14)
+  const BOUNDS = L.latLngBounds(
+    L.latLng(-38.3, 144.4), // SW
+    L.latLng(-37.4, 145.7)  // NE
+  )
+
+  map = L.map(mapRef.value, {
+    center: DEFAULT_CENTER,
+    zoom: 13,
+    maxBounds: BOUNDS,
+    maxBoundsViscosity: 1.0,
+    zoomSnap: 0.5,
+    zoomDelta: 0.5,
+    wheelDebounceTime: 40,
+  })
+
+  // Minimum scaling: Just accommodate the boundary, and then expand by 2 stops for a more visually friendly look
+  const minFitZoom = map.getBoundsZoom(BOUNDS, true)
+  map.setMinZoom(minFitZoom - 2)
+
+  // The initial view fits the boundary
+  map.fitBounds(BOUNDS, { animate: false })
+
+  // Base map
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap',
   }).addTo(map)
 
-  loadDemo('day')
+  // Listen for window changes and dynamically update the minimum scaling
+  window.addEventListener('resize', handleResize)
+
+  // === Render a hierarchical shading heatmap using real SA2 polygons and uhi_value ===
+  loadUHIChoropleth()
+})
+
+function handleResize () {
+  if (!map) return
+  const BOUNDS = L.latLngBounds(L.latLng(-38.3, 144.4), L.latLng(-37.4, 145.7))
+  const minFitZoom = map.getBoundsZoom(BOUNDS, true)
+  map.setMinZoom(minFitZoom - 2)
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  if (map) {
+    map.remove()
+    map = null
+  }
 })
 </script>
 
@@ -232,7 +366,7 @@ onMounted(() => {
   flex-direction: column;
 }
 
-/* Top introduction section */
+/* Top introduction */
 .intro-section {
   height: 75vh;
   display: flex;
@@ -241,11 +375,10 @@ onMounted(() => {
   align-items: center;
   background-color: #faffe8;
 }
-
 .intro-text { flex: 1; }
 .intro-text h1 {
   font-size: 2.8rem;
-  font-weight: 800; /* bold title */
+  font-weight: 800;
   margin-bottom: 1rem;
   color: #2d6a4f;
 }
@@ -254,11 +387,10 @@ onMounted(() => {
   line-height: 1.6;
   color: #333;
 }
-
 .intro-images {
   flex: 1;
   display: flex;
-  gap: 0; /* tight connection */
+  gap: 0;
 }
 .intro-images img {
   width: 50%;
@@ -267,7 +399,7 @@ onMounted(() => {
   border-radius: 0;
 }
 
-/* Map section (centered, custom width/height) */
+/* Map area */
 .map-wrapper {
   height: 75vh;
   width: 85vw;
@@ -275,8 +407,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
 }
-
-/* Toolbar and controls */
 .toolbar {
   display: flex;
   align-items: center;
@@ -289,7 +419,7 @@ onMounted(() => {
   gap: 8px;
 }
 
-/* Search input + suggestions dropdown */
+/* Search input and drop-down */
 .search-wrap { position: relative; }
 .search-box {
   height: 34px;
@@ -333,6 +463,41 @@ onMounted(() => {
   border-radius: 12px;
   overflow: hidden;
 }
+
+/* Refine the small square of legend (the main style has already been inline in JS, and here it serves as a supplement) */
+.leaflet-control .legend i { opacity: .9; }
+
+.map-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.map-footer-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #000;
+  text-align: center;
+}
+
+
+.btn-black {
+  background: #000;
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 0.98rem;
+  cursor: pointer;
+  transition: background .2s ease, transform .05s ease;
+  text-decoration: none;
+}
+.btn-black:hover { background: #222; }
+.btn-black:active { transform: translateY(1px); }
+
+
 </style>
 
 
