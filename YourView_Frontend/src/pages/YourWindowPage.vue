@@ -46,48 +46,69 @@
         <div class="result-photo">
           <img :src="previewUrl || placeholder" alt="Your window" />
         </div>
-
         <div class="result-cards">
-          <div class="result-cards">
-            <div class="check-card" :class="pass3 ? 'ok' : 'bad'">
-              <div class="card-body">
-                <div class="check-icon-wrap">
-                  <img src="/src/assets/tree.png" class="check-icon" />
-                </div>
-                <div class="check-content">
+          <div class="check-card" :class="pass3 ? 'ok' : 'bad'">
+            <div class="card-body">
+              <div class="check-icon-wrap">
+                <img src="/src/assets/result3.png" class="check-icon" />
+              </div>
+              <div class="check-content">
+                <div class="check-title-wrap">
                   <div class="check-title">3 Trees Visible</div>
-                  <div class="check-sub">Trees visible from your window</div>
-                  <div class="badge" :class="pass3 ? 'b-ok' : 'b-bad'">
-                    <span>{{ pass3 ? '✔ Compliant' : '✘ Not compliant' }}</span>
+                  <div class="info-tooltip-wrapper">
+                    <img src="@/assets/info-icon.png" alt="Info" class="info-icon" />
+                    <div class="tooltip-text">
+                      You should see at least 3 trees outside of your window to connect with nature.
+                    </div>
                   </div>
+                </div>
+                <div class="check-sub">Trees visible from your window</div>
+                <div class="badge" :class="pass3 ? 'b-ok' : 'b-bad'">
+                  <span v-html="pass3 ? '&#10004; Compliant' : '&#10008; Not compliant'"></span>
                 </div>
               </div>
             </div>
-            <div class="check-card" :class="pass30 ? 'ok' : 'bad'">
-              <div class="card-body">
-                <div class="check-icon-wrap">
-                  <img src="/src/assets/tree.png" class="check-icon" />
-                </div>
-                <div class="check-content">
+          </div>
+          <div class="check-card" :class="pass30 ? 'ok' : 'bad'">
+            <div class="card-body">
+              <div class="check-icon-wrap">
+                <img src="/src/assets/result30.png" class="check-icon" />
+              </div>
+              <div class="check-content">
+                <div class="check-title-wrap">
                   <div class="check-title">30% Canopy Cover</div>
-                  <div class="check-sub">Neighborhood tree coverage</div>
-                  <div class="badge" :class="pass30 ? 'b-ok' : 'b-bad'">
-                    <span>{{ pass30 ? '✔ Compliant' : '✘ Needs Improvement' }}</span>
+                  <div class="info-tooltip-wrapper">
+                    <img src="@/assets/info-icon.png" alt="Info" class="info-icon" />
+                    <div class="tooltip-text">
+                      Your area should have at least 30% tree canopy cover to reduce heat.
+                    </div>
                   </div>
+                </div>
+                <div class="check-sub">Neighborhood tree coverage</div>
+                <div class="badge" :class="pass30 ? 'b-ok' : 'b-bad'">
+                  <span v-html="pass3 ? '&#10004; Compliant' : '&#10008; Not compliant'"></span>
                 </div>
               </div>
             </div>
-            <div class="check-card" :class="pass300 ? 'ok' : 'bad'">
-              <div class="card-body">
-                <div class="check-icon-wrap">
-                  <img src="/src/assets/tree.png" class="check-icon" />
-                </div>
-                <div class="check-content">
+          </div>
+          <div class="check-card" :class="pass300 ? 'ok' : 'bad'">
+            <div class="card-body">
+              <div class="check-icon-wrap">
+                <img src="/src/assets/result300.png" class="check-icon" />
+              </div>
+              <div class="check-content">
+                <div class="check-title-wrap">
                   <div class="check-title">300m Green Space</div>
-                  <div class="check-sub">Distance to nearest park</div>
-                  <div class="badge" :class="pass300 ? 'b-ok' : 'b-bad'">
-                    <span>{{ pass300 ? '✔ Compliant' : '✘ Needs Improvement' }}</span>
+                  <div class="info-tooltip-wrapper">
+                    <img src="@/assets/info-icon.png" alt="Info" class="info-icon" />
+                    <div class="tooltip-text">
+                      Your place should reach green space/park within 300 meters to support quality of living.
+                    </div>
                   </div>
+                </div>
+                <div class="check-sub">Distance to nearest park</div>
+                <div class="badge" :class="pass300 ? 'b-ok' : 'b-bad'">
+                  <span v-html="pass3 ? '&#10004; Compliant' : '&#10008; Not compliant'"></span>
                 </div>
               </div>
             </div>
@@ -97,41 +118,30 @@
 
       <div class="metric-row">
         <div class="metric">
-          <div class="metric-icon-title">
-            <img src="@/assets/tree.png" alt="Tree Icon" class="metric-icon" />
             <div class="m-title">Trees Visible</div>
-          </div>
           <div class="m-value">{{ trees }} Trees</div>
           <div class="m-sub">from your window</div>
         </div>
         <div class="metric">
-          <div class="metric-icon-title">
-            <img src="@/assets/tree.png" alt="Canopy Icon" class="metric-icon" />
-            <div class="m-title">Canopy Cover</div>
-          </div>
+          <div class="m-title">Canopy Cover</div>
           <div class="m-value">{{ canopy }}%</div>
           <div class="m-sub">from your area</div>
         </div>
         <div class="metric">
-          <div class="metric-icon-title">
-            <img src="@/assets/tree.png" alt="Park Icon" class="metric-icon" />
-            <div class="m-title">Nearest Park</div>
-          </div>
+          <div class="m-title">Nearest Park</div>
           <div class="m-value">{{ parkDistance }}m</div>
           <div class="m-sub">from your house</div>
         </div>
         <div class="metric">
-          <div class="metric-icon-title">
-            <img src="@/assets/tree.png" alt="Heat Icon" class="metric-icon" />
+          <div class="metric-header">
             <div class="m-title">Heat Risk</div>
+            <button class="heatmap-btn" @click="goToHeatMap">Explore Heat Map</button>
           </div>
           <div class="m-value">1/5</div>
           <div class="m-sub">urban heat island</div>
-          <button class="heatmap-btn" @click="goToHeatMap">Explore Heat Map</button>
         </div>
       </div>
     </section>
-
     <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
       <div class="modal-card">
         <button class="modal-close" @click="closeModal" aria-label="Close">
@@ -146,9 +156,9 @@
               :class="{ 'is-filled': !!previewUrl }"
               @dragover.prevent
               @dragenter.prevent
-              @drop.prevent="handleDrop"
-            >
+              @drop.prevent="handleDrop">
               <template v-if="!previewUrl">
+                
                 <div class="dz-inner">
                   <div class="dz-icon">
                     <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -234,12 +244,50 @@
             <div v-if="showTC" id="tc-panel" class="tc-panel">
               <div class="tc-content">
                 <h4>Terms & Conditions</h4>
-                <ul>
-                  <li>By uploading an image, you confirm we have the right to store it.</li>
-                  <li>Personal information you provide is used to compute your score.</li>
-                  <li>Do not upload sensitive or offensive content.</li>
-                  <li>Results are indicative and may use approximations.</li>
-                </ul>
+
+                <div class="tc-section">
+                  <h5>1. Acceptance of Terms</h5>
+                  <p>By using this website, you agree to these Terms and Conditions. If you do not agree, please do not use the site.</p>
+                </div>
+
+                <div class="tc-section">
+                  <h5>2. Use of Website</h5>
+                  <p>This website is provided for personal and non-commercial use.</p>
+                  <p>You agree not to misuse the website, including uploading harmful content, spam, or unlawful material.</p>
+                </div>
+
+                <div class="tc-section">
+                  <h5>3. Uploading Photos</h5>
+                  <ul>
+                    <li>By uploading a photo, you confirm that you own the rights to the image or have permission to share it.</li>
+                    <li>You must not upload photos that are offensive, discriminatory, unlawful, or infringe on the rights of others.</li>
+                    <li>Uploaded photos may be used only for the purposes stated on this website (e.g., contributing to heat maps or community reporting).</li>
+                    <li>We reserve the right to remove any uploaded photo at our discretion.</li>
+                  </ul>
+                </div>
+
+                <div class="tc-section">
+                  <h5>4. Privacy</h5>
+                  <p>Uploaded photos may contain personal data. By uploading, you consent to the storage and processing of this data for the website's purpose.</p>
+                  <p>We will not sell or share your photos with third parties without your consent, unless required by law.</p>
+                </div>
+
+                <div class="tc-section">
+                  <h5>5. Intellectual Property</h5>
+                  <p>The website content (excluding user-uploaded photos) is owned by us and protected by copyright.</p>
+                  <p>You retain ownership of your uploaded photos, but grant us a non-exclusive, royalty-free license to display and use them for the purpose of the website.</p>
+                </div>
+
+                <div class="tc-section">
+                  <h5>6. Limitation of Liability</h5>
+                  <p>We are not responsible for the accuracy, reliability, or consequences of any content (including photos) uploaded by users.</p>
+                  <p>Use of the website is at your own risk.</p>
+                </div>
+
+                <div class="tc-section">
+                  <h5>7. Changes to Terms</h5>
+                  <p>We may update these Terms and Conditions at any time. Continued use of the website means you accept the updated terms.</p>
+                </div>
               </div>
               <div class="tc-actions">
                 <button class="tc-close" @click="showTC = false">Close</button>
@@ -264,6 +312,7 @@
 
 <script setup>
 import { ref, reactive, computed, nextTick } from "vue";
+import { useRouter } from 'vue-router'
 
 const showModal = ref(false);
 const step = ref(1);
@@ -484,6 +533,11 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
+const router = useRouter()
+
+function goToHeatMap() {
+  router.push('/YourArea')
+}
 </script>
 
 <style scoped>
@@ -596,18 +650,18 @@ onBeforeUnmount(() => {
 .check-icon-wrap {
   width: 48px;
   height: 48px;
-  background-color: #e6e6e6;
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
   flex-shrink: 0;
   margin-top: 2px;
+  background-color: transparent
 }
 
 .check-icon {
-  width: 28px;
-  height: 28px;
+  width: 50px;
+  height: 50px;
   object-fit: contain;
 }
 
@@ -659,20 +713,6 @@ onBeforeUnmount(() => {
   background: #fff;
 }
 
-.metric-icon-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.metric-icon {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
 .m-title {
   color: #222;
   font-weight: 600;
@@ -690,6 +730,103 @@ onBeforeUnmount(() => {
 .m-sub {
   color: #666;
   font-size: 0.875rem;
+}
+
+.metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.heatmap-btn {
+  background: #5ba829;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.heatmap-btn:hover {
+  background: #4a8e20;
+}
+
+.check-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.info-tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.info-icon {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  top: -6px;
+  left: 120%;
+  background-color: #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  width: 220px;
+  z-index: 999;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.info-tooltip-wrapper:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+
+.tc-section {
+  margin-bottom: 16px;
+}
+
+.tc-section h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #222;
+}
+
+.tc-section p {
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  color: #444;
+  line-height: 1.5;
+}
+
+.tc-section ul {
+  padding-left: 20px;
+  margin-top: 6px;
+}
+
+.tc-section ul li {
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  color: #444;
 }
 </style>
 
