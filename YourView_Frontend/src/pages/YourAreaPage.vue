@@ -99,6 +99,12 @@ const DEFAULT_CENTER = [-37.8136, 144.9631]
 /** Color table (Light -> dark) */
 const PALETTE = ['#fee5d9', '#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15']
 
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
+  iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
+  shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
+})
 /** Create isometric grading color codes based on numerical values */
 function makeColorScale(values, k = PALETTE.length) {
   const nums = values.filter(v => typeof v === 'number' && !Number.isNaN(v))
@@ -310,7 +316,7 @@ function goToCoords(lat, lon, name = '') {
 /** Initialize the Leaflet map and load the heat map */
 onMounted(() => {
   const BOUNDS = L.latLngBounds(
-    L.latLng(-38.3, 144.4), // SW
+    L.latLng(-38.6, 144.4), // SW
     L.latLng(-37.4, 145.7)  // NE
   )
 
