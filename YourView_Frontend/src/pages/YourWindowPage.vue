@@ -47,25 +47,48 @@
         </div>
 
         <div class="result-cards">
-          <div class="check-card" :class="pass3 ? 'ok' : 'bad'">
-            <div class="check-title">3 Trees Visible</div>
-            <div class="check-sub">from your window</div>
-            <div class="badge" :class="pass3 ? 'b-ok' : 'b-bad'">
-              <span>{{ pass3 ? 'Compliant' : 'Not compliant' }}</span>
+          <div class="result-cards">
+            <div class="check-card" :class="pass3 ? 'ok' : 'bad'">
+              <div class="card-body">
+                <div class="check-icon-wrap">
+                  <img src="/src/assets/tree.png" class="check-icon" />
+                </div>
+                <div class="check-content">
+                  <div class="check-title">3 Trees Visible</div>
+                  <div class="check-sub">Trees visible from your window</div>
+                  <div class="badge" :class="pass3 ? 'b-ok' : 'b-bad'">
+                    <span>{{ pass3 ? '✔ Compliant' : '✘ Not compliant' }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="check-card" :class="pass30 ? 'ok' : 'bad'">
-            <div class="check-title">30% Canopy Cover</div>
-            <div class="check-sub">from your neighborhood</div>
-            <div class="badge" :class="pass30 ? 'b-ok' : 'b-bad'">
-              <span>{{ pass30 ? 'Compliant' : 'Not compliant' }}</span>
+            <div class="check-card" :class="pass30 ? 'ok' : 'bad'">
+              <div class="card-body">
+                <div class="check-icon-wrap">
+                  <img src="/src/assets/tree.png" class="check-icon" />
+                </div>
+                <div class="check-content">
+                  <div class="check-title">30% Canopy Cover</div>
+                  <div class="check-sub">Neighborhood tree coverage</div>
+                  <div class="badge" :class="pass30 ? 'b-ok' : 'b-bad'">
+                    <span>{{ pass30 ? '✔ Compliant' : '✘ Needs Improvement' }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="check-card" :class="pass300 ? 'ok' : 'bad'">
-            <div class="check-title">300m Distance</div>
-            <div class="check-sub">from your park</div>
-            <div class="badge" :class="pass300 ? 'b-ok' : 'b-bad'">
-              <span>{{ pass300 ? 'Compliant' : 'Not compliant' }}</span>
+            <div class="check-card" :class="pass300 ? 'ok' : 'bad'">
+              <div class="card-body">
+                <div class="check-icon-wrap">
+                  <img src="/src/assets/tree.png" class="check-icon" />
+                </div>
+                <div class="check-content">
+                  <div class="check-title">300m Green Space</div>
+                  <div class="check-sub">Distance to nearest park</div>
+                  <div class="badge" :class="pass300 ? 'b-ok' : 'b-bad'">
+                    <span>{{ pass300 ? '✔ Compliant' : '✘ Needs Improvement' }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -73,24 +96,37 @@
 
       <div class="metric-row">
         <div class="metric">
-          <div class="m-title">Trees Visible</div>
+          <div class="metric-icon-title">
+            <img src="@/assets/tree.png" alt="Tree Icon" class="metric-icon" />
+            <div class="m-title">Trees Visible</div>
+          </div>
           <div class="m-value">{{ trees }} Trees</div>
           <div class="m-sub">from your window</div>
         </div>
         <div class="metric">
-          <div class="m-title">Canopy Cover</div>
+          <div class="metric-icon-title">
+            <img src="@/assets/tree.png" alt="Canopy Icon" class="metric-icon" />
+            <div class="m-title">Canopy Cover</div>
+          </div>
           <div class="m-value">{{ canopy }}%</div>
           <div class="m-sub">from your area</div>
         </div>
         <div class="metric">
-          <div class="m-title">Nearest Park</div>
+          <div class="metric-icon-title">
+            <img src="@/assets/tree.png" alt="Park Icon" class="metric-icon" />
+            <div class="m-title">Nearest Park</div>
+          </div>
           <div class="m-value">{{ parkDistance }}m</div>
           <div class="m-sub">from your house</div>
         </div>
         <div class="metric">
-          <div class="m-title">Heat Risk</div>
+          <div class="metric-icon-title">
+            <img src="@/assets/tree.png" alt="Heat Icon" class="metric-icon" />
+            <div class="m-title">Heat Risk</div>
+          </div>
           <div class="m-value">1/5</div>
           <div class="m-sub">urban heat island</div>
+          <button class="heatmap-btn" @click="goToHeatMap">Explore Heat Map</button>
         </div>
       </div>
     </section>
@@ -504,14 +540,13 @@ onBeforeUnmount(() => {
 .result-cards { display: grid; gap: 16px; }
 .check-card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; background: #f7faf7; }
 .check-card.bad { background: #fdeeee; }
-.check-title { font-weight: 700; }
-.check-sub { color: #555; margin-top: 4px; }
+
+
 .badge { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 10px; border-radius: 999px; font-size: 0.9rem; }
 .b-ok { background: #dff4e6; color: #0a6b3b; }
 .b-bad { background: #ffe0e0; color: #9c1a1a; }
 .metric-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 22px; }
 .metric { border: 1px solid #e6e6e6; border-radius: 8px; padding: 14px; background: #fff; }
-.m-title { color: #333; font-weight: 600; }
 .m-value { font-size: 1.4rem; margin: 6px 0; }
 .m-sub { color: #666; }
 @media (max-width: 980px) { .result-grid { grid-template-columns: 1fr; } .metric-row { grid-template-columns: 1fr 1fr; } }
@@ -534,5 +569,125 @@ onBeforeUnmount(() => {
 .autocomplete-list li:hover { background: #f0f0f0; }
 .primary { font-weight: bold; }
 .secondary { font-size: 12px; color: #666; }
+.check-card {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 16px;
+  background: #f7faf7;
+  transition: box-shadow 0.3s;
+}
+
+.check-card.ok {
+  background: #f0fdf4;
+}
+
+.check-card.bad {
+  background: #fff5f5;
+}
+
+.card-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.check-icon-wrap {
+  width: 48px;
+  height: 48px;
+  background-color: #e6e6e6;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.check-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.check-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.check-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #111;
+}
+
+.check-sub {
+  font-size: 0.875rem;
+  color: #555;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  border-radius: 999px;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.b-ok {
+  background: #e6f6eb;
+  color: #107c41;
+}
+
+.b-bad {
+  background: #ffe0e0;
+  color: #9c1a1a;
+}
+
+.check-card:hover {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.metric {
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.metric-icon-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.metric-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.m-title {
+  color: #222;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.m-value {
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: #111;
+  margin: 6px 0;
+}
+
+.m-sub {
+  color: #666;
+  font-size: 0.875rem;
+}
 </style>
 
