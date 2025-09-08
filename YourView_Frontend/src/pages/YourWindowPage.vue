@@ -1,5 +1,4 @@
 <template>
-
   <div class="green-page">
     <div class="page">
       <div class="hero">
@@ -86,7 +85,7 @@
                 </div>
                 <div class="check-sub">Neighborhood tree coverage</div>
                 <div class="badge" :class="pass30 ? 'b-ok' : 'b-bad'">
-                  <span v-html="pass3 ? '&#10004; Compliant' : '&#10008; Not compliant'"></span>
+                  <span v-html="pass30 ? '&#10004; Compliant' : '&#10008; Not compliant'"></span>
                 </div>
               </div>
             </div>
@@ -108,7 +107,7 @@
                 </div>
                 <div class="check-sub">Distance to nearest park</div>
                 <div class="badge" :class="pass300 ? 'b-ok' : 'b-bad'">
-                  <span v-html="pass3 ? '&#10004; Compliant' : '&#10008; Not compliant'"></span>
+                  <span v-html="pass300 ? '&#10004; Compliant' : '&#10008; Not compliant'"></span>
                 </div>
               </div>
             </div>
@@ -311,6 +310,8 @@
 </template>
 
 <script setup>
+const USE_BACKEND = false
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 import { ref, reactive, computed, nextTick } from "vue";
 import { useRouter } from 'vue-router'
 
@@ -396,11 +397,123 @@ function validateAddress() {
 const canSubmit = computed(() => {
   return !!file.value && form.trees !== "" && form.address !== "" && !errors.trees && !errors.address && form.agree;
 });
+
+const latRef = ref(null)
+const lngRef = ref(null)
+
+async function computeNearestParkDistance() {
+  if (latRef.value == null || lngRef.value == null) return null
+
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+  if (!apiKey) {
+    console.error('Missing VITE_GOOGLE_MAPS_API_KEY')
+    return null
+  }
+
+  const url = 'https://places.googleapis.com/v1/places:searchNearby'
+  const body = {
+
+    rankPreference: 'DISTANCE',
+    includedTypes: ['park'],
+    maxResultCount: 1,
+    locationRestriction: {
+      circle: {
+        center: { latitude: latRef.value, longitude: lngRef.value },
+        radius: 5000
+      }
+    }
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Goog-Api-Key': apiKey,
+    'X-Goog-FieldMask': [
+      'places.displayName',
+      'places.id',
+      'places.location' 
+    ].join(',')
+  }
+
+  try {
+    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}))
+      console.error('Places v1 nearby error:', err)
+      return null
+    }
+    const data = await resp.json()
+    const place = data.places?.[0]
+    const loc = place?.location
+    if (!loc?.latitude || !loc?.longitude) return null
+
+    const center = new google.maps.LatLng(latRef.value, lngRef.value)
+    const park = new google.maps.LatLng(loc.latitude, loc.longitude)
+    const dist = google.maps.geometry.spherical.computeDistanceBetween(center, park)
+    return Math.round(dist)
+  } catch (e) {
+    console.error(e)
+    return null
+  }
+}
+
+
+// async function submit() {
+//   validateTrees();
+//   validateAddress();
+//   if (!canSubmit.value) return;
+//   trees.value = Number(form.trees);
+//   showResult.value = true;
+//   showModal.value = false;
+//   await nextTick();
+//   resultRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+// }
+
 async function submit() {
   validateTrees();
   validateAddress();
   if (!canSubmit.value) return;
-  trees.value = Number(form.trees);
+
+  let parkDist = await computeNearestParkDistance().catch(() => null);
+  if (typeof parkDist === 'number') {
+    parkDistance.value = parkDist;
+  }
+
+  if (!USE_BACKEND) {
+    trees.value = Number(form.trees);
+    showResult.value = true;
+    showModal.value = false;
+    await nextTick();
+    resultRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('image', file.value);
+  fd.append('address', form.address);
+  fd.append('tree_count_manual', form.trees);
+  if (latRef.value != null) fd.append('lat', String(latRef.value));
+  if (lngRef.value != null) fd.append('lng', String(lngRef.value));
+
+  let data;
+  try {
+    const res = await fetch(`${API_BASE}/api/submissions`, { method: 'POST', body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Upload failed');
+    }
+    data = await res.json();
+  } catch (e) {
+    console.error(e);
+    return;
+  }
+
+  applyBackendResult(data); 
+  if (typeof parkDist === 'number') {
+    parkDistance.value = parkDist;
+  } else if (typeof data.park_within_300m !== 'undefined') {
+    parkDistance.value = data.park_within_300m ? 250 : 600;
+  }
+
   showResult.value = true;
   showModal.value = false;
   await nextTick();
@@ -470,6 +583,17 @@ function selectPrediction(p) {
   form.address = p.description
   predictions.value = []
   showDropdown.value = false
+
+  const svc = new google.maps.places.PlacesService(document.createElement('div'))
+  svc.getDetails({ placeId: p.place_id, fields: ['geometry'] }, (det, status) => {
+    if (status === google.maps.places.PlacesServiceStatus.OK && det?.geometry?.location) {
+      latRef.value = det.geometry.location.lat()
+      lngRef.value = det.geometry.location.lng()
+    } else {
+      latRef.value = null
+      lngRef.value = null
+    }
+  })
   newSession()
 }
 
@@ -514,7 +638,7 @@ function loadGoogleMapsScript() {
   return new Promise((resolve, reject) => {
     if (window.google?.maps) return resolve()
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`
     script.async = true
     script.defer = true
     script.onload = resolve
