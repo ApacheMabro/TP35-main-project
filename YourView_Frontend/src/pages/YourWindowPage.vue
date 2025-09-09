@@ -479,8 +479,6 @@ async function computeNearestParkDistance() {
   }
 }
 
-
-
 // async function submit() {
 //   validateTrees();
 //   validateAddress();
@@ -751,8 +749,6 @@ function goToHeatMap() {
 .result-cards { display: grid; gap: 16px; }
 .check-card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; background: #f7faf7; }
 .check-card.bad { background: #fdeeee; }
-
-
 .badge { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 10px; border-radius: 999px; font-size: 0.9rem; }
 .b-ok { background: #dff4e6; color: #0a6b3b; }
 .b-bad { background: #ffe0e0; color: #9c1a1a; }
@@ -780,8 +776,7 @@ function goToHeatMap() {
 .autocomplete-list li:hover { background: #f0f0f0; }
 .primary { font-weight: bold; }
 .secondary { font-size: 12px; color: #666; }
-.check-card {
-  border: 1px solid #ddd;
+.check-card { border: 1px solid #ddd;
   border-radius: 12px;
   padding: 16px;
   background: #f7faf7;
