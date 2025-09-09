@@ -130,6 +130,13 @@
           <div class="m-title">Nearest Park</div>
           <div class="m-value">{{ parkDistance }}m</div>
           <div class="m-sub">from your house</div>
+          <div class="m-sub">
+            nearest:
+            <template v-if="nearestParkName">
+              <a :href="nearestParkMapsUrl" target="_blank" rel="noopener">{{ nearestParkName }}</a>
+            </template>
+            <template v-else>unknown</template>
+          </div>
         </div>
         <div class="metric">
           <div class="metric-header">
@@ -344,6 +351,17 @@ const pass300 = computed(() => parkDistance.value <= 300);
 
 const headline = computed(() => (pass3.value && pass30.value && pass300.value ? "Congratulations, your living environment is excellent" : "You need more green"));
 
+const nearestParkName = ref('')
+const nearestParkPlaceId = ref('')
+const nearestParkLat = ref(null)
+const nearestParkLng = ref(null)
+
+const nearestParkMapsUrl = computed(() =>
+  nearestParkPlaceId.value && nearestParkLat.value != null && nearestParkLng.value != null
+    ? `https://www.google.com/maps/search/?api=1&query=${nearestParkLat.value},${nearestParkLng.value}&query_place_id=${nearestParkPlaceId.value}`
+    : ''
+)
+
 function openModal() {
   showModal.value = true;
   step.value = 1;
@@ -412,7 +430,6 @@ async function computeNearestParkDistance() {
 
   const url = 'https://places.googleapis.com/v1/places:searchNearby'
   const body = {
-
     rankPreference: 'DISTANCE',
     includedTypes: ['park'],
     maxResultCount: 1,
@@ -423,14 +440,13 @@ async function computeNearestParkDistance() {
       }
     }
   }
-
   const headers = {
     'Content-Type': 'application/json',
     'X-Goog-Api-Key': apiKey,
     'X-Goog-FieldMask': [
-      'places.displayName',
       'places.id',
-      'places.location' 
+      'places.displayName',
+      'places.location'
     ].join(',')
   }
 
@@ -448,13 +464,21 @@ async function computeNearestParkDistance() {
 
     const center = new google.maps.LatLng(latRef.value, lngRef.value)
     const park = new google.maps.LatLng(loc.latitude, loc.longitude)
-    const dist = google.maps.geometry.spherical.computeDistanceBetween(center, park)
-    return Math.round(dist)
+    const dist = Math.round(google.maps.geometry.spherical.computeDistanceBetween(center, park))
+
+    return {
+      distance: dist,
+      name: place.displayName?.text || '',
+      placeId: place.id || '',
+      lat: loc.latitude,
+      lng: loc.longitude
+    }
   } catch (e) {
     console.error(e)
     return null
   }
 }
+
 
 
 // async function submit() {
@@ -473,9 +497,18 @@ async function submit() {
   validateAddress();
   if (!canSubmit.value) return;
 
-  let parkDist = await computeNearestParkDistance().catch(() => null);
-  if (typeof parkDist === 'number') {
-    parkDistance.value = parkDist;
+  const result = await computeNearestParkDistance().catch(() => null);
+  if (result) {
+    parkDistance.value = result.distance
+    nearestParkName.value = result.name
+    nearestParkPlaceId.value = result.placeId
+    nearestParkLat.value = result.lat
+    nearestParkLng.value = result.lng
+  } else {
+    nearestParkName.value = ''
+    nearestParkPlaceId.value = ''
+    nearestParkLat.value = null
+    nearestParkLng.value = null
   }
 
   if (!USE_BACKEND) {
@@ -508,10 +541,8 @@ async function submit() {
   }
 
   applyBackendResult(data); 
-  if (typeof parkDist === 'number') {
-    parkDistance.value = parkDist;
-  } else if (typeof data.park_within_300m !== 'undefined') {
-    parkDistance.value = data.park_within_300m ? 250 : 600;
+  if (!result && typeof data?.park_within_300m !== 'undefined') {
+    parkDistance.value = data.park_within_300m ? 250 : 600
   }
 
   showResult.value = true;
