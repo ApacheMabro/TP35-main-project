@@ -68,6 +68,7 @@
               </div>
             </div>
           </div>
+
           <div class="check-card" :class="pass30 ? 'ok' : 'bad'">
             <div class="card-body">
               <div class="check-icon-wrap">
@@ -90,6 +91,7 @@
               </div>
             </div>
           </div>
+          
           <div class="check-card" :class="pass300 ? 'ok' : 'bad'">
             <div class="card-body">
               <div class="check-icon-wrap">
@@ -125,6 +127,7 @@
           <div class="m-title">Canopy Cover</div>
           <div class="m-value">{{ canopy }}%</div>
           <div class="m-sub">from your area</div>
+          <div class="m-sub" v-if="areaName">suburb: {{ areaName }}</div>
         </div>
         <div class="metric">
           <div class="m-title">Nearest Park</div>
@@ -317,10 +320,8 @@
 </template>
 
 <script setup>
-const USE_BACKEND = false
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
-import { ref, reactive, computed, nextTick } from "vue";
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, nextTick, onMounted, onBeforeUnmount } from "vue";
+import { useRouter } from "vue-router";
 
 const showModal = ref(false);
 const step = ref(1);
@@ -331,55 +332,47 @@ const file = ref(null);
 const previewUrl = ref("");
 const placeholder = "https://via.placeholder.com/800x500?text=Your+window";
 
-const form = reactive({
-  trees: "",
-  address: "",
-  agree: false,
-});
+const form = reactive({ trees: "", address: "", agree: false });
 const errors = reactive({ trees: "", address: "" });
 
 const showResult = ref(false);
 const resultRef = ref(null);
 
 const trees = ref(0);
-const canopy = ref(36);
-const parkDistance = ref(256);
+const canopy = ref(0);
+const areaName = ref("");
+const parkDistance = ref(0);
 
 const pass3 = computed(() => trees.value >= 3);
 const pass30 = computed(() => canopy.value >= 30);
 const pass300 = computed(() => parkDistance.value <= 300);
 
-const headline = computed(() => (pass3.value && pass30.value && pass300.value ? "Congratulations, your living environment is excellent" : "You need more green"));
+const headline = computed(() =>
+  pass3.value && pass30.value && pass300.value
+    ? "Congratulations, your living environment is excellent"
+    : "You need more green"
+);
 
-const nearestParkName = ref('')
-const nearestParkPlaceId = ref('')
-const nearestParkLat = ref(null)
-const nearestParkLng = ref(null)
+const nearestParkName = ref("");
+const nearestParkPlaceId = ref("");
+const nearestParkLat = ref(null);
+const nearestParkLng = ref(null);
 
 const nearestParkMapsUrl = computed(() =>
   nearestParkPlaceId.value && nearestParkLat.value != null && nearestParkLng.value != null
     ? `https://www.google.com/maps/search/?api=1&query=${nearestParkLat.value},${nearestParkLng.value}&query_place_id=${nearestParkPlaceId.value}`
-    : ''
-)
+    : ""
+);
 
 function openModal() {
   showModal.value = true;
   step.value = 1;
 }
 
-function resetState() {
-  file.value = null;
-  previewUrl.value = "";
-  form.trees = "";
-  form.address = "";
-  form.agree = false;
-  errors.trees = "";
-  errors.address = "";
-}
-
 function closeModal() {
   showModal.value = false;
 }
+
 function handleFile(e) {
   const f = e.target.files?.[0];
   if (f) loadFile(f);
@@ -398,7 +391,6 @@ function loadFile(f) {
   previewUrl.value = URL.createObjectURL(f);
 }
 
-
 function validateTrees(mode) {
   const v = String(form.trees).trim();
   if (v === "") {
@@ -407,31 +399,26 @@ function validateTrees(mode) {
   }
   errors.trees = /^\d+$/.test(v) ? "" : "bad";
 }
-
-
 function validateAddress() {
   errors.address = form.address ? "" : "bad";
 }
+
 const canSubmit = computed(() => {
   return !!file.value && form.trees !== "" && form.address !== "" && !errors.trees && !errors.address && form.agree;
 });
 
-const latRef = ref(null)
-const lngRef = ref(null)
+const latRef = ref(null);
+const lngRef = ref(null);
 
 async function computeNearestParkDistance() {
-  if (latRef.value == null || lngRef.value == null) return null
+  if (latRef.value == null || lngRef.value == null) return null;
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return null;
 
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-  if (!apiKey) {
-    console.error('Missing VITE_GOOGLE_MAPS_API_KEY')
-    return null
-  }
-
-  const url = 'https://places.googleapis.com/v1/places:searchNearby'
+  const url = "https://places.googleapis.com/v1/places:searchNearby";
   const body = {
-    rankPreference: 'DISTANCE',
-    includedTypes: ['park'],
+    rankPreference: "DISTANCE",
+    includedTypes: ["park"],
     maxResultCount: 1,
     locationRestriction: {
       circle: {
@@ -439,108 +426,98 @@ async function computeNearestParkDistance() {
         radius: 5000
       }
     }
-  }
+  };
   const headers = {
-    'Content-Type': 'application/json',
-    'X-Goog-Api-Key': apiKey,
-    'X-Goog-FieldMask': [
-      'places.id',
-      'places.displayName',
-      'places.location'
-    ].join(',')
-  }
+    "Content-Type": "application/json",
+    "X-Goog-Api-Key": apiKey,
+    "X-Goog-FieldMask": ["places.id","places.displayName","places.location"].join(",")
+  };
 
-  try {
-    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}))
-      console.error('Places v1 nearby error:', err)
-      return null
-    }
-    const data = await resp.json()
-    const place = data.places?.[0]
-    const loc = place?.location
-    if (!loc?.latitude || !loc?.longitude) return null
+  const resp = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  const place = data.places?.[0];
+  const loc = place?.location;
+  if (!loc?.latitude || !loc?.longitude) return null;
 
-    const center = new google.maps.LatLng(latRef.value, lngRef.value)
-    const park = new google.maps.LatLng(loc.latitude, loc.longitude)
-    const dist = Math.round(google.maps.geometry.spherical.computeDistanceBetween(center, park))
+  const center = new google.maps.LatLng(latRef.value, lngRef.value);
+  const park = new google.maps.LatLng(loc.latitude, loc.longitude);
+  const dist = Math.round(google.maps.geometry.spherical.computeDistanceBetween(center, park));
 
-    return {
-      distance: dist,
-      name: place.displayName?.text || '',
-      placeId: place.id || '',
-      lat: loc.latitude,
-      lng: loc.longitude
-    }
-  } catch (e) {
-    console.error(e)
-    return null
-  }
+  return {
+    distance: dist,
+    name: place.displayName?.text || "",
+    placeId: place.id || "",
+    lat: loc.latitude,
+    lng: loc.longitude
+  };
 }
 
-// async function submit() {
-//   validateTrees();
-//   validateAddress();
-//   if (!canSubmit.value) return;
-//   trees.value = Number(form.trees);
-//   showResult.value = true;
-//   showModal.value = false;
-//   await nextTick();
-//   resultRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
-// }
+async function getCanopy(lon, lat) {
+  const base = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!base || !key) throw new Error("Missing Supabase env");
+
+  const url = `${base}/rest/v1/rpc/api_canopy_for_point`;
+  const r = await fetch(url, {
+    method: "POST",
+    headers: {
+      "apikey": key,
+      "Authorization": `Bearer ${key}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ p_lon: lon, p_lat: lat })
+  });
+
+  if (!r.ok) throw new Error("canopy fetch failed");
+
+  const data = await r.json();
+
+  let canopyPct = 0;
+  let name = "";
+
+  if (Array.isArray(data)) {
+    canopyPct = Number(data[0]) || 0;
+  } else if (typeof data === "object" && data !== null) {
+    canopyPct = Number(
+      data.canopy_pct ?? data.canopy ?? data.canopy_percent ?? data.result ?? data.value
+    ) || 0;
+    name = data.sa2_name21 ?? data.area_name ?? ""; 
+  } else {
+    canopyPct = Number(data) || 0;
+  }
+  return { canopyPct, areaName: name };
+}
+
+
 
 async function submit() {
   validateTrees();
   validateAddress();
   if (!canSubmit.value) return;
 
-  const result = await computeNearestParkDistance().catch(() => null);
-  if (result) {
-    parkDistance.value = result.distance
-    nearestParkName.value = result.name
-    nearestParkPlaceId.value = result.placeId
-    nearestParkLat.value = result.lat
-    nearestParkLng.value = result.lng
+  const park = await computeNearestParkDistance().catch(() => null);
+  if (park) {
+    parkDistance.value = park.distance;
+    nearestParkName.value = park.name;
+    nearestParkPlaceId.value = park.placeId;
+    nearestParkLat.value = park.lat;
+    nearestParkLng.value = park.lng;
   } else {
-    nearestParkName.value = ''
-    nearestParkPlaceId.value = ''
-    nearestParkLat.value = null
-    nearestParkLng.value = null
+    nearestParkName.value = "";
+    nearestParkPlaceId.value = "";
+    nearestParkLat.value = null;
+    nearestParkLng.value = null;
   }
 
-  if (!USE_BACKEND) {
-    trees.value = Number(form.trees);
-    showResult.value = true;
-    showModal.value = false;
-    await nextTick();
-    resultRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
-  }
+  trees.value = Number(form.trees);
 
-  const fd = new FormData();
-  fd.append('image', file.value);
-  fd.append('address', form.address);
-  fd.append('tree_count_manual', form.trees);
-  if (latRef.value != null) fd.append('lat', String(latRef.value));
-  if (lngRef.value != null) fd.append('lng', String(lngRef.value));
-
-  let data;
-  try {
-    const res = await fetch(`${API_BASE}/api/submissions`, { method: 'POST', body: fd });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Upload failed');
+  if (latRef.value != null && lngRef.value != null) {
+    const res = await getCanopy(lngRef.value, latRef.value).catch(() => null);
+    if (res) {
+      canopy.value = Math.round(res.canopyPct);
+      areaName.value = res.areaName || "";
     }
-    data = await res.json();
-  } catch (e) {
-    console.error(e);
-    return;
-  }
-
-  applyBackendResult(data); 
-  if (!result && typeof data?.park_within_300m !== 'undefined') {
-    parkDistance.value = data.park_within_300m ? 250 : 600
   }
 
   showResult.value = true;
@@ -549,149 +526,132 @@ async function submit() {
   resultRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-import { onMounted, onBeforeUnmount } from 'vue'
-
-let acSvc = null
-let sessionToken = null
-
-const predictions = ref([])
-const showDropdown = ref(false)
-const activeIndex = ref(-1)
-const dropdownRef = ref(null)
+let acSvc = null;
+let sessionToken = null;
+const predictions = ref([]);
+const showDropdown = ref(false);
+const activeIndex = ref(-1);
+const dropdownRef = ref(null);
 
 function loadGoogle() {
   if (window.google?.maps) {
-    acSvc = new google.maps.places.AutocompleteService()
-    newSession()
+    acSvc = new google.maps.places.AutocompleteService();
+    newSession();
   }
 }
-
 function newSession() {
-  sessionToken = new google.maps.places.AutocompleteSessionToken()
+  sessionToken = new google.maps.places.AutocompleteSessionToken();
 }
-
 function onInput() {
   if (!form.address.trim()) {
-    predictions.value = []
-    showDropdown.value = false
-    activeIndex.value = -1
-    return
+    predictions.value = [];
+    showDropdown.value = false;
+    activeIndex.value = -1;
+    return;
   }
-  fetchPredictionsDebounced()
+  fetchPredictionsDebounced();
 }
-
-let debounceId = null
+let debounceId = null;
 function fetchPredictionsDebounced() {
-  if (debounceId) clearTimeout(debounceId)
-  debounceId = setTimeout(fetchPredictions, 200)
+  if (debounceId) clearTimeout(debounceId);
+  debounceId = setTimeout(fetchPredictions, 200);
 }
-
 function fetchPredictions() {
-  if (!form.address.trim()) return
-
+  if (!form.address.trim()) return;
   const req = {
     input: form.address,
     sessionToken,
-    componentRestrictions: { country: 'AU' },
-    types: ['address'],
-  }
-
+    componentRestrictions: { country: "AU" },
+    types: ["address"]
+  };
   acSvc.getPlacePredictions(req, (res, status) => {
     if (status !== google.maps.places.PlacesServiceStatus.OK || !res) {
-      predictions.value = []
-      showDropdown.value = false
-      return
+      predictions.value = [];
+      showDropdown.value = false;
+      return;
     }
-    predictions.value = res
-    activeIndex.value = -1
-    showDropdown.value = true
-  })
+    predictions.value = res;
+    activeIndex.value = -1;
+    showDropdown.value = true;
+  });
 }
-
 function selectPrediction(p) {
-  form.address = p.description
-  predictions.value = []
-  showDropdown.value = false
-
-  const svc = new google.maps.places.PlacesService(document.createElement('div'))
-  svc.getDetails({ placeId: p.place_id, fields: ['geometry'] }, (det, status) => {
+  form.address = p.description;
+  predictions.value = [];
+  showDropdown.value = false;
+  const svc = new google.maps.places.PlacesService(document.createElement("div"));
+  svc.getDetails({ placeId: p.place_id, fields: ["geometry"] }, (det, status) => {
     if (status === google.maps.places.PlacesServiceStatus.OK && det?.geometry?.location) {
-      latRef.value = det.geometry.location.lat()
-      lngRef.value = det.geometry.location.lng()
+      latRef.value = det.geometry.location.lat();
+      lngRef.value = det.geometry.location.lng();
     } else {
-      latRef.value = null
-      lngRef.value = null
+      latRef.value = null;
+      lngRef.value = null;
     }
-  })
-  newSession()
+  });
+  newSession();
 }
-
 function moveActive(delta) {
-  const len = predictions.value.length
-  if (!len) return
-  activeIndex.value = (activeIndex.value + delta + len) % len
+  const len = predictions.value.length;
+  if (!len) return;
+  activeIndex.value = (activeIndex.value + delta + len) % len;
 }
-
 function confirmActive() {
   if (activeIndex.value >= 0 && activeIndex.value < predictions.value.length) {
-    selectPrediction(predictions.value[activeIndex.value])
+    selectPrediction(predictions.value[activeIndex.value]);
   }
 }
-
 function hideDropdown() {
-  showDropdown.value = false
-  activeIndex.value = -1
+  showDropdown.value = false;
+  activeIndex.value = -1;
 }
-
 function formatPrimary(p) {
-  const sf = p.structured_formatting
-  if (!sf) return p.description
-  let text = sf.main_text
+  const sf = p.structured_formatting;
+  if (!sf) return p.description;
+  let text = sf.main_text;
   if (sf.main_text_matched_substrings?.length) {
-    const [{ offset, length }] = sf.main_text_matched_substrings
-    const a = text.slice(0, offset)
-    const b = text.slice(offset, offset + length)
-    const c = text.slice(offset + length)
-    return `${a}<strong>${b}</strong>${c}`
+    const [{ offset, length }] = sf.main_text_matched_substrings;
+    const a = text.slice(0, offset);
+    const b = text.slice(offset, offset + length);
+    const c = text.slice(offset + length);
+    return `${a}<strong>${b}</strong>${c}`;
   }
-  return text
+  return text;
 }
-
 function handleClickOutside(e) {
   if (!dropdownRef.value?.contains(e.target)) {
-    hideDropdown()
+    hideDropdown();
   }
 }
-
 function loadGoogleMapsScript() {
   return new Promise((resolve, reject) => {
-    if (window.google?.maps) return resolve()
-    const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`
-    script.async = true
-    script.defer = true
-    script.onload = resolve
-    script.onerror = () => reject(new Error('Google Maps script failed to load'))
-    document.head.appendChild(script)
-  })
+    if (window.google?.maps) return resolve();
+    const k = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!k) return reject(new Error("Missing Google API key"));
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${k}&libraries=places,geometry`;
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Google Maps script failed to load"));
+    document.head.appendChild(script);
+  });
 }
-
 onMounted(async () => {
-  await loadGoogleMapsScript()
-  loadGoogle()
-  document.addEventListener('click', handleClickOutside)
-})
-
+  await loadGoogleMapsScript();
+  loadGoogle();
+  document.addEventListener("click", handleClickOutside);
+});
 onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
+  document.removeEventListener("click", handleClickOutside);
+});
 
-const router = useRouter()
-
+const router = useRouter();
 function goToHeatMap() {
-  router.push('/YourArea')
+  router.push("/YourArea");
 }
 </script>
+
 
 <style scoped>
 .green-page { background-color: #faffe8; min-height: 100vh; }
@@ -979,4 +939,3 @@ function goToHeatMap() {
   color: #444;
 }
 </style>
-
