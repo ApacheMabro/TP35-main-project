@@ -119,7 +119,7 @@
 
       <div class="metric-row">
         <div class="metric">
-            <div class="m-title">Trees Visible</div>
+          <div class="m-title">Trees Visible</div>
           <div class="m-value">{{ trees }} Trees</div>
           <div class="m-sub">from your window</div>
         </div>
@@ -151,6 +151,7 @@
         </div>
       </div>
     </section>
+
     <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
       <div class="modal-card">
         <button class="modal-close" @click="closeModal" aria-label="Close">
@@ -158,6 +159,7 @@
             <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
           </svg>
         </button>
+
         <div v-if="step === 1" class="step-pane">
           <div class="upload-grid">
             <div
@@ -167,7 +169,6 @@
               @dragenter.prevent
               @drop.prevent="handleDrop">
               <template v-if="!previewUrl">
-                
                 <div class="dz-inner">
                   <div class="dz-icon">
                     <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -191,13 +192,29 @@
                 {{ previewUrl ? 'Upload an other picture' : 'Select file' }}
               </button>
             </div>
+
+            <div class="consent-row">
+              <label class="checkbox-wrapper">
+                <input type="checkbox" v-model="allowShow" />
+                <span class="checkmark"></span>
+                <span>Allow display of my photo</span>
+              </label>
+            </div>
+
+            <div v-if="analyzeError" class="error">{{ analyzeError }}</div>
+            <div v-if="deleteInfo" class="info">{{ deleteInfo }}</div>
           </div>
 
           <div class="step-actions">
-            <button class="circle-btn next" :disabled="!file" @click="step = 2" aria-label="Next">
-              <svg class="icon" viewBox="0 0 24 24" width="18" height="18">
+            <button
+              class="circle-btn next"
+              :disabled="!file || analyzing"
+              @click="goNext"
+              aria-label="Next">
+              <svg v-if="!analyzing" class="icon" viewBox="0 0 24 24" width="18" height="18">
                 <path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
+              <span v-else class="spinner" aria-hidden="true"></span>
             </button>
           </div>
         </div>
@@ -206,8 +223,12 @@
           <div class="form-field">
             <label class="label">Number of trees outside your window</label>
             <input type="text" inputmode="numeric" pattern="[0-9]*" v-model.trim="form.trees" @input="validateTrees('input')" @blur="validateTrees('blur')" placeholder="eg,. 3"/>
+            <div class="hint" v-if="detectedTrees !== null">
+              Auto-detected: {{ detectedTrees }} ({{ toPct(detectedConfidence) }}). You can edit if it seems wrong.
+            </div>
             <div class="error" v-if="errors.trees">The input number should be an integer >= 0</div>
           </div>
+
           <div class="form-field">
             <label class="label">Address</label>
             <div class="address-row" ref="dropdownRef">
@@ -316,12 +337,16 @@
       </div>
     </div>
   </div>
-
 </template>
 
 <script setup>
 import { ref, reactive, computed, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
+
+const UPLOADER_URL = 'https://oelkz0pl2c.execute-api.ap-southeast-2.amazonaws.com/default/upload-image';
+const ANALYZER_URL = 'https://2piqweol0f.execute-api.ap-southeast-2.amazonaws.com/analyze';
+const DELETE_URL = 'https://oelkz0pl2c.execute-api.ap-southeast-2.amazonaws.com/default/delete-object';
+const S3_FOLDER = 'YourWindow';
 
 const showModal = ref(false);
 const step = ref(1);
@@ -331,6 +356,14 @@ const fileInput = ref(null);
 const file = ref(null);
 const previewUrl = ref("");
 const placeholder = "https://via.placeholder.com/800x500?text=Your+window";
+
+const allowShow = ref(false);
+const analyzing = ref(false);
+const analyzeError = ref("");
+const deleteInfo = ref("");
+
+const detectedTrees = ref(null);
+const detectedConfidence = ref(null);
 
 const form = reactive({ trees: "", address: "", agree: false });
 const errors = reactive({ trees: "", address: "" });
@@ -367,6 +400,10 @@ const nearestParkMapsUrl = computed(() =>
 function openModal() {
   showModal.value = true;
   step.value = 1;
+  analyzeError.value = "";
+  deleteInfo.value = "";
+  detectedTrees.value = null;
+  detectedConfidence.value = null;
 }
 
 function closeModal() {
@@ -388,6 +425,7 @@ function loadFile(f) {
   const byExt = /\.(png|jpe?g|jfif|gif|webp|bmp|heic|heif|tiff?)$/i.test(name);
   if (!byMime && !byExt) return;
   file.value = f;
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
   previewUrl.value = URL.createObjectURL(f);
 }
 
@@ -482,14 +520,127 @@ async function getCanopy(lon, lat) {
     canopyPct = Number(
       data.canopy_pct ?? data.canopy ?? data.canopy_percent ?? data.result ?? data.value
     ) || 0;
-    name = data.sa2_name21 ?? data.area_name ?? ""; 
+    name = data.sa2_name21 ?? data.area_name ?? "";
   } else {
     canopyPct = Number(data) || 0;
   }
   return { canopyPct, areaName: name };
 }
 
+function toPct(score) {
+  if (typeof score !== "number" || Number.isNaN(score)) return "—";
+  if (score > 1) return `${Math.round(score)}%`;
+  return `${Math.round(score * 100)}%`;
+}
 
+async function parseMaybeLambdaProxyResponse(res) {
+  const data = await res.json().catch(() => null);
+  if (!data) return null;
+  if ('statusCode' in data && 'body' in data && typeof data.body === 'string') {
+    try { return JSON.parse(data.body); } catch { return data; }
+  }
+  return data;
+}
+
+async function analyzeImageAndMaybeDelete() {
+  analyzeError.value = "";
+  deleteInfo.value = "";
+
+  if (!file.value) {
+    analyzeError.value = "Please select an image file.";
+    return null;
+  }
+  const extOk = /\.(jpe?g|png|gif|webp|bmp|jfif|heic|heif|tiff?)$/i.test(file.value.name);
+  const mimeOk = file.value.type?.startsWith("image/");
+  if (!extOk && !mimeOk) {
+    analyzeError.value = "Only image files are allowed.";
+    return null;
+  }
+
+  analyzing.value = true;
+  let uploadedBucket = "";
+  let uploadedKey = "";
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file.value);
+    formData.append("folder", S3_FOLDER);
+
+    const uploadRes = await fetch(UPLOADER_URL, { method: "POST", body: formData });
+    if (!uploadRes.ok) {
+      const t = await uploadRes.text().catch(() => "");
+      let detail = "";
+      try { const j = JSON.parse(t); detail = j?.detail ?? ""; } catch {}
+      throw new Error(detail || `Upload failed (${uploadRes.status})`);
+    }
+    const uploadJson = await uploadRes.json();
+    uploadedBucket = uploadJson.bucket || uploadJson.s3_bucket || uploadJson.Bucket || "";
+    uploadedKey    = uploadJson.key    || uploadJson.s3_key    || uploadJson.Key    || "";
+    if (!uploadedBucket || !uploadedKey) throw new Error("Upload did not return bucket/key.");
+
+    const payload = { bucket: uploadedBucket, key: uploadedKey, include_details: true, check_compliance: true };
+    const analyzeRes = await fetch(ANALYZER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!analyzeRes.ok) {
+      const text = await analyzeRes.text().catch(() => "");
+      throw new Error(text || `Analyzer failed (${analyzeRes.status})`);
+    }
+    const analyzeJson = await parseMaybeLambdaProxyResponse(analyzeRes) ?? {};
+
+    const counted =
+      analyzeJson?.trees_counted ??
+      analyzeJson?.tree_count ??
+      analyzeJson?.analysis_details?.tree_count ??
+      null;
+
+    const conf =
+      analyzeJson?.confidence_score ??
+      analyzeJson?.analysis_details?.confidence_score ??
+      null;
+
+    detectedTrees.value = typeof counted === "number" ? counted : (Number(counted) || null);
+    detectedConfidence.value = typeof conf === "number" ? conf : (Number(conf) || null);
+
+    if (!allowShow.value) {
+      try {
+        const delRes = await fetch(DELETE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bucket: uploadedBucket, key: uploadedKey })
+        });
+        if (!delRes.ok) {
+          const text = await delRes.text().catch(() => "");
+          deleteInfo.value = `Tried to delete image but failed: ${text || delRes.status}`;
+        } else {
+          deleteInfo.value = "The uploaded image has been deleted (no display consent).";
+        }
+      } catch (e) {
+        deleteInfo.value = `Delete attempt errored: ${e?.message || e}`;
+      }
+    }
+
+    return true;
+  } catch (e) {
+    analyzeError.value = e?.message || String(e);
+    return false;
+  } finally {
+    analyzing.value = false;
+  }
+}
+
+async function goNext() {
+  const ok = await analyzeImageAndMaybeDelete();
+  if (ok) {
+    if (detectedTrees.value != null) {
+      form.trees = String(detectedTrees.value);
+      validateTrees("input");
+    }
+  }
+  step.value = 2;
+}
 
 async function submit() {
   validateTrees();
@@ -644,6 +795,7 @@ onMounted(async () => {
 });
 onBeforeUnmount(() => {
   document.removeEventListener("click", handleClickOutside);
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
 });
 
 const router = useRouter();
@@ -651,7 +803,6 @@ function goToHeatMap() {
   router.push("/YourArea");
 }
 </script>
-
 
 <style scoped>
 .green-page { background-color: #faffe8; min-height: 100vh; }
@@ -686,16 +837,21 @@ function goToHeatMap() {
 .select-btn { background: #bdbdbd; border: none; padding: 8px 14px; border-radius: 18px; cursor: pointer; }
 .hidden-input { display: none; }
 .step-actions { display: flex; justify-content: flex-end; }
-.circle-btn { width: 40px; height: 40px; border-radius: 999px; border: 1px solid #222; background: #fff; cursor: pointer; display: inline-grid; place-items: center; }
+.circle-btn { width: 40px; height: 40px; border-radius: 999px; border: 1px solid #222; background: #fff; cursor: pointer; display: inline-grid; place-items: center; position: relative; }
 .circle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .icon { display: block; }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #333; border-top-color: transparent; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .form-field { display: grid; gap: 6px; }
 .label { font-weight: 600; }
+.hint { font-size: 12px; color: #2d6a4f; margin-top: 2px; }
 .address-row { position: relative; }
 .address-row input { width: 100%; padding-left: 38px; }
 .addr-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #666; display: inline-flex; align-items: center; justify-content: center; pointer-events: none; }
 .addr-icon svg { width: 18px; height: 18px; }
 .error { color: #d12; font-size: 12px; margin-top: -2px; }
+.info { color: #1f2937; font-size: 12px; }
 .actions-row { display: flex; gap: 12px; justify-content: center; margin-top: 8px; }
 .primary-btn { background: #111; color: #fff; padding: 8px 18px; border-radius: 18px; border: none; cursor: pointer; }
 .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -707,17 +863,34 @@ function goToHeatMap() {
 .result-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: start; margin-top: 18px; }
 .result-photo img { max-width: 100%; max-height: 400px; object-fit: cover; border-radius: 8px; }
 .result-cards { display: grid; gap: 16px; }
-.check-card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; background: #f7faf7; }
-.check-card.bad { background: #fdeeee; }
-.badge { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 6px 10px; border-radius: 999px; font-size: 0.9rem; }
-.b-ok { background: #dff4e6; color: #0a6b3b; }
+.check-card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; background: #f7faf7; transition: box-shadow 0.3s; }
+.check-card.ok { background: #f0fdf4; }
+.check-card.bad { background: #fff5f5; }
+.card-body { display: flex; align-items: flex-start; gap: 16px; }
+.check-icon-wrap { width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; flex-shrink: 0; margin-top: 2px; background-color: transparent }
+.check-icon { width: 50px; height: 50px; object-fit: contain; }
+.check-content { display: flex; flex-direction: column; gap: 6px; }
+.check-title { font-weight: 700; font-size: 1rem; color: #111; }
+.check-sub { font-size: 0.875rem; color: #555; }
+.badge { display: inline-flex; align-items: center; padding: 6px 12px; font-size: 0.85rem; border-radius: 999px; font-weight: 500; width: fit-content; }
+.b-ok { background: #e6f6eb; color: #107c41; }
 .b-bad { background: #ffe0e0; color: #9c1a1a; }
-.metric-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 22px; }
+.check-card:hover { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); }
+
 .metric { border: 1px solid #e6e6e6; border-radius: 8px; padding: 14px; background: #fff; }
-.m-value { font-size: 1.4rem; margin: 6px 0; }
-.m-sub { color: #666; }
-@media (max-width: 980px) { .result-grid { grid-template-columns: 1fr; } .metric-row { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 560px) { .metric-row { grid-template-columns: 1fr; } }
+.m-title { color: #222; font-weight: 600; font-size: 1rem; line-height: 1.2; }
+.m-value { font-size: 1.4rem; font-weight: 500; color: #111; margin: 6px 0; }
+.m-sub { color: #666; font-size: 0.875rem; }
+.metric-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.heatmap-btn { background: #5ba829; color: white; border: none; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+.heatmap-btn:hover { background: #4a8e20; }
+
+.check-title-wrap { display: flex; align-items: center; gap: 6px; position: relative; }
+.info-tooltip-wrapper { position: relative; display: inline-block; }
+.info-icon { width: 16px; height: 16px; cursor: pointer; opacity: 0.6; }
+.tooltip-text { visibility: hidden; opacity: 0; position: absolute; top: -6px; left: 120%; background-color: #333; color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; line-height: 1.3; width: 220px; z-index: 999; transition: opacity 0.3s ease; pointer-events: none; }
+.info-tooltip-wrapper:hover .tooltip-text { visibility: visible; opacity: 1; }
+
 .tc-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
 .tc-link { border: none; background: transparent; text-decoration: underline; color: #2d6a4f; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
 .tc-panel { margin-top: 10px; border: 1px solid #e6e6e6; border-radius: 8px; background: #fff; padding: 12px; max-height: 240px; overflow: auto; }
@@ -728,6 +901,7 @@ function goToHeatMap() {
 .accordion-enter-from, .accordion-leave-to { max-height: 0; opacity: 0; }
 .accordion-enter-to, .accordion-leave-from { max-height: 240px; opacity: 1; }
 .accordion-enter-active, .accordion-leave-active { transition: max-height 0.25s ease, opacity 0.25s ease; }
+
 .dz-preview { max-width: 100%; max-height: 300px; object-fit: contain; }
 .dz-actions { text-align: center; }
 .autocomplete-list { position: absolute; z-index: 999; width: 100%; background: #fff; border: 1px solid #ccc; border-radius: 6px; max-height: 240px; overflow-y: auto; list-style: none; padding: 6px 0; margin: 2px 0 0; }
@@ -736,206 +910,14 @@ function goToHeatMap() {
 .autocomplete-list li:hover { background: #f0f0f0; }
 .primary { font-weight: bold; }
 .secondary { font-size: 12px; color: #666; }
-.check-card { border: 1px solid #ddd;
-  border-radius: 12px;
-  padding: 16px;
-  background: #f7faf7;
-  transition: box-shadow 0.3s;
-}
 
-.check-card.ok {
-  background: #f0fdf4;
-}
+.consent-row { margin-top: -6px; }
+.checkbox-wrapper { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.checkbox-wrapper input { width: 16px; height: 16px; }
 
-.check-card.bad {
-  background: #fff5f5;
-}
-
-.card-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.check-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-shrink: 0;
-  margin-top: 2px;
-  background-color: transparent
-}
-
-.check-icon {
-  width: 50px;
-  height: 50px;
-  object-fit: contain;
-}
-
-.check-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.check-title {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #111;
-}
-
-.check-sub {
-  font-size: 0.875rem;
-  color: #555;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  font-size: 0.85rem;
-  border-radius: 999px;
-  font-weight: 500;
-  width: fit-content;
-}
-
-.b-ok {
-  background: #e6f6eb;
-  color: #107c41;
-}
-
-.b-bad {
-  background: #ffe0e0;
-  color: #9c1a1a;
-}
-
-.check-card:hover {
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.metric {
-  border: 1px solid #e6e6e6;
-  border-radius: 8px;
-  padding: 14px;
-  background: #fff;
-}
-
-.m-title {
-  color: #222;
-  font-weight: 600;
-  font-size: 1rem;
-  line-height: 1.2;
-}
-
-.m-value {
-  font-size: 1.4rem;
-  font-weight: 500;
-  color: #111;
-  margin: 6px 0;
-}
-
-.m-sub {
-  color: #666;
-  font-size: 0.875rem;
-}
-
-.metric-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-
-.heatmap-btn {
-  background: #5ba829;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s;
-}
-
-.heatmap-btn:hover {
-  background: #4a8e20;
-}
-
-.check-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  position: relative;
-}
-
-.info-tooltip-wrapper {
-  position: relative;
-  display: inline-block;
-}
-
-.info-icon {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  opacity: 0.6;
-}
-
-.tooltip-text {
-  visibility: hidden;
-  opacity: 0;
-  position: absolute;
-  top: -6px;
-  left: 120%;
-  background-color: #333;
-  color: #fff;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  line-height: 1.3;
-  width: 220px;
-  z-index: 999;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.info-tooltip-wrapper:hover .tooltip-text {
-  visibility: visible;
-  opacity: 1;
-}
-
-
-.tc-section {
-  margin-bottom: 16px;
-}
-
-.tc-section h5 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: #222;
-}
-
-.tc-section p {
-  font-size: 0.9rem;
-  margin-bottom: 6px;
-  color: #444;
-  line-height: 1.5;
-}
-
-.tc-section ul {
-  padding-left: 20px;
-  margin-top: 6px;
-}
-
-.tc-section ul li {
-  margin-bottom: 6px;
-  font-size: 0.9rem;
-  color: #444;
-}
+.tc-section { margin-bottom: 16px; }
+.tc-section h5 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; color: #222; }
+.tc-section p { font-size: 0.9rem; margin-bottom: 6px; color: #444; line-height: 1.5; }
+.tc-section ul { padding-left: 20px; margin-top: 6px; }
+.tc-section ul li { margin-bottom: 6px; font-size: 0.9rem; color: #444; }
 </style>
