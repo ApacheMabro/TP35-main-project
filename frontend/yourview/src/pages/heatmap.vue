@@ -151,7 +151,7 @@ function onSuburbSelected() {
   background-position: center;
 }
 
-.bg1 {
+/* .bg1 {
   background-image: url('@/assets/heatmapbg1.png');
 }
 
@@ -161,7 +161,7 @@ function onSuburbSelected() {
 
 .bg3 {
   background-image: url('@/assets/heatmapbg3.png');
-}
+} */
 
 .melbourne-city-section {
   height: 250px;
