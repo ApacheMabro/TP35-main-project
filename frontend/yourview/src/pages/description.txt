@@ -1,0 +1,1 @@
+route-level views (Home.vue, About.vue, Dashboard.vue)

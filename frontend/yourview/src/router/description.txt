@@ -1,0 +1,1 @@
+vue-router setup (index.js or index.ts)

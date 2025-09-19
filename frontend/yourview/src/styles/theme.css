@@ -1,0 +1,13 @@
+:root {
+  --bg:        #f8fef6;  /* Background */
+  --fg:        #030901;  /* Main text */
+  --muted:     #4b4b4b;  /* Secondary text (pick a softer gray if needed) */
+
+  --primary:   #45ef1a;  /* Buttons, highlights */
+  --secondary: #87eaf7;  /* Supporting color */
+  --accent:    #589ef3;  /* Links, accents */
+
+  --primary-fg:   #030901; /* text on primary (dark on neon green works better than white) */
+  --secondary-fg: #030901;
+  --accent-fg:    #ffffff; /* white text on blue accent */
+}
